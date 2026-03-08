@@ -476,8 +476,6 @@ function drawBackdrop() {
     ctx.drawImage(img, x0, y0, w, h);
     ctx.restore();
   }
-  ctx.strokeStyle = '#1a1206'; ctx.lineWidth = 1.5;
-  ctx.strokeRect(x0, y0, w, h);
 }
 
 function drawStageTop() {
@@ -507,11 +505,6 @@ function drawLid(openT) {
     // Outside of lid visible (wooden top face, foreshortening as it rotates up)
     poly([fl, fr, btr, btl], '#8a8070', null);
     drawGrain([fl, fr, btr, btl], 0.55);
-    ctx.strokeStyle = '#1a1206';
-    ctx.beginPath();
-    ctx.moveTo(fl[0], fl[1]); ctx.lineTo(fr[0], fr[1]);
-    ctx.lineTo(btr[0], btr[1]); ctx.lineTo(btl[0], btl[1]);
-    ctx.closePath(); ctx.lineWidth = 1.8; ctx.stroke();
   } else {
     // Inside of lid visible — draw the backdrop image on the inner face
     ctx.save();
@@ -526,11 +519,6 @@ function drawLid(openT) {
       ctx.drawImage(img, btl[0], frontY, btr[0] - btl[0], btl[1] - frontY);
     }
     ctx.restore();
-    ctx.strokeStyle = '#1a1206'; ctx.lineWidth = 1.8;
-    ctx.beginPath();
-    ctx.moveTo(fl[0], fl[1]); ctx.lineTo(fr[0], fr[1]);
-    ctx.lineTo(btr[0], btr[1]); ctx.lineTo(btl[0], btl[1]);
-    ctx.closePath(); ctx.stroke();
   }
 }
 
@@ -705,7 +693,6 @@ function draw(ts) {
 
   // Stage surface
   drawStageTop();
-  drawTopEdges();
 
   // Slot grooves drawn first, then puppets on top
   for (const p of perf) drawSlotTrack(p);
@@ -720,7 +707,6 @@ function draw(ts) {
 
   // Front face covers characters that descend into it during transitions
   drawFrontFace();
-  drawFrontEdges();
 
   // Buttons (dimmed until unlocked)
   withAlpha(isEnabled('scene') ? 1 : DIM, drawSceneButton);
