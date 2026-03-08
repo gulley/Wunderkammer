@@ -1509,8 +1509,10 @@ function draw(ts) {
 
 function getCanvasPos(e) {
   const r = canvas.getBoundingClientRect();
-  return [(e.clientX - r.left) * canvas.width  / r.width,
-          (e.clientY - r.top)  * canvas.height / r.height];
+  const cx = e.touches ? e.touches[0].clientX : e.clientX;
+  const cy = e.touches ? e.touches[0].clientY : e.clientY;
+  return [(cx - r.left) * canvas.width  / r.width,
+          (cy - r.top)  * canvas.height / r.height];
 }
 
 function inCircle(x, y, cx, cy) {
@@ -1518,7 +1520,7 @@ function inCircle(x, y, cx, cy) {
   return dx*dx + dy*dy <= HIT_R * HIT_R;
 }
 
-canvas.addEventListener('mousedown', e => {
+function handleInputDown(e) {
   if (!audioCtx) {
     audioCtx = new AudioContext();
   } else if (audioCtx.state === 'suspended') {
@@ -1548,10 +1550,13 @@ canvas.addEventListener('mousedown', e => {
       backdropIdx = (backdropIdx + 1) % N_BACKDROPS;
     }
   }
-});
+}
 
-canvas.addEventListener('mouseup',    () => { running = false; });
-canvas.addEventListener('mouseleave', () => { running = false; });
+function handleInputUp() { running = false; }
+
+canvas.addEventListener('mousedown', handleInputDown);
+canvas.addEventListener('mouseup',    handleInputUp);
+canvas.addEventListener('mouseleave', handleInputUp);
 canvas.addEventListener('mousemove', e => {
   const [x, y] = getCanvasPos(e);
   canvas.style.cursor = (
@@ -1560,6 +1565,13 @@ canvas.addEventListener('mousemove', e => {
     (isEnabled('scene') && inCircle(x,y,SCENE_BTN[0],SCENE_BTN[1]))
   ) ? 'pointer' : 'default';
 });
+
+canvas.addEventListener('touchstart', e => {
+  e.preventDefault();
+  handleInputDown(e);
+}, { passive: false });
+canvas.addEventListener('touchend',    e => { e.preventDefault(); handleInputUp(); }, { passive: false });
+canvas.addEventListener('touchcancel', handleInputUp);
 
 document.addEventListener('keydown', e => { if (e.key === 'Shift') shiftHeld = true; });
 document.addEventListener('keyup',   e => { if (e.key === 'Shift') shiftHeld = false; });
