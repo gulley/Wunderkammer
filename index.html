@@ -39,8 +39,8 @@ canvas.height = 520;
 
 const CARD_H = 123;  // 112.5 % of original 110 px
 
-function loadRosterEntry(src, gait) {
-  const e = { img: new Image(), cardW: 60, cardH: CARD_H, gait };
+function loadRosterEntry(src, gait, name, tags) {
+  const e = { img: new Image(), cardW: 60, cardH: CARD_H, gait, name, tags: tags || [] };
   e.img.src = src;
   e.img.onload = () => {
     e.cardW = Math.round(CARD_H * e.img.naturalWidth / e.img.naturalHeight);
@@ -54,49 +54,61 @@ const ROSTER = [
     bob:      a => -26 * Math.pow(Math.abs(Math.sin(2*a)), 0.45),
     waggle:   a => Math.sin(a * 2.0) * 0.09,
     cardTilt: a => -0.08 + Math.sin(a * 2.0) * 0.04,
-  }),
+  }, 'King', ['royal', 'gentle']),
 
   loadRosterEntry('assets/boney.png', {
     bob:      a => -(12 + 9 * Math.abs(Math.sin(a))) * Math.abs(Math.sin(2*a)),
     waggle:   a => Math.sin(a * 3.0) * 0.17 + Math.sin(a * 11.3) * 0.045,
     cardTilt: a => 0.10 + Math.sin(a * 3.0) * 0.09,
-  }),
+  }, 'Boney', ['dark', 'wild']),
 
   loadRosterEntry('assets/spike.png', {
     bob:      a => -30 * Math.pow(Math.abs(Math.sin(2*a)), 1.7),
     waggle:   a => Math.sin(a * 2.0) * 0.15,
     cardTilt: a => 0.07 + Math.sin(a * 2.0) * 0.08,
-  }),
+  }, 'Spike', ['dark', 'comic']),
 
   loadRosterEntry('assets/sol.png', {
     bob:      a => -7 * Math.abs(Math.sin(a)),
     waggle:   a => Math.sin(a * 1.0) * 0.05,
     cardTilt: a => Math.sin(a * 1.5) * 0.05,
-  }),
+  }, 'Sol', ['gentle', 'royal']),
 
   loadRosterEntry('assets/jester.png', {
     bob:      a => -22 * Math.abs(Math.sin(4*a)),
     waggle:   a => Math.sin(a * 4.0) * 0.19 + Math.sin(a * 7.0) * 0.06,
     cardTilt: a => Math.sin(a * 4.0) * 0.22,
-  }),
+  }, 'Jester', ['comic', 'wild']),
 
   loadRosterEntry('assets/piper.png', {
     bob:      a => -18 * Math.abs(Math.sin(2*a)),
     waggle:   a => Math.sin(a * 2.0) * 0.07,
     cardTilt: a => 0.05 + Math.sin(a * 2.0) * 0.03,
-  }),
+  }, 'Piper', ['gentle', 'comic']),
 
   loadRosterEntry('assets/bromley.png', {
     bob:      a => -24 * Math.pow(Math.abs(Math.sin(2*a)), 0.55),
     waggle:   a => Math.sin(a * 2.0) * 0.13,
     cardTilt: a => Math.sin(a * 2.0) * 0.11,
-  }),
+  }, 'Bromley', ['royal', 'dark']),
 
   loadRosterEntry('assets/george.png', {
     bob:      a => -25 * Math.pow(Math.abs(Math.sin(2*a)), 1.4),
     waggle:   a => Math.sin(a * 2.0) * 0.08,
     cardTilt: a => -0.05 + Math.sin(a * 2.0) * 0.03,
-  }),
+  }, 'George', ['gentle', 'royal']),
+
+  loadRosterEntry('assets/princess.png', {
+    bob:      a => -12 * Math.abs(Math.sin(2*a)),
+    waggle:   a => Math.sin(a * 1.5) * 0.05,
+    cardTilt: a => -0.04 + Math.sin(a * 1.5) * 0.04,
+  }, 'Princess', ['royal', 'gentle']),
+
+  loadRosterEntry('assets/hag.png', {
+    bob:      a => -(8 + 14 * Math.abs(Math.sin(a * 0.7))) * Math.pow(Math.abs(Math.sin(2*a)), 0.6),
+    waggle:   a => Math.sin(a * 3.0) * 0.16 + Math.sin(a * 7.7) * 0.05,
+    cardTilt: a => 0.12 + Math.sin(a * 3.0) * 0.10,
+  }, 'Hag', ['dark', 'wild']),
 
 ];
 
@@ -195,6 +207,8 @@ function makeNewPair() {
       bob:      r.gait.bob,
       waggle:   r.gait.waggle,
       cardTilt: r.gait.cardTilt,
+      name:     r.name,
+      tags:     r.tags,
       track:    makeWobblyTrack(),
       angle:    slot * Math.PI,
     };
@@ -230,9 +244,10 @@ const SCENE_BTN = [(fbl[0] + fbr[0]) / 2, (ftl[1] + fbl[1]) / 2];
 const HIT_R     = 50;
 const SPEED     = 1.1;
 
-let crankA  = 0;
-let running = false;
-let lastT   = null;
+let crankA    = 0;
+let running   = false;
+let lastT     = null;
+let shiftHeld = false;
 
 // =============================================================================
 // CHARACTER TRANSITION
@@ -265,6 +280,10 @@ function startTransition() {
   pendingPerf = makeNewPair();
   transPhase  = 'exiting';
   transT      = 0;
+  playScript = [];
+  playBeatIdx = -1;
+  for (const c of cueCards) { c.phase = 'exiting'; c.phaseT = 0; }
+  emotionParticles = [];
 }
 
 // =============================================================================
@@ -280,6 +299,546 @@ const backdropImgs = ['assets/castle.png', 'assets/forest.png'].map(src => {
   img.src = src;
   return img;
 });
+
+// =============================================================================
+// PLAY SYSTEM — procedurally generated 3-act plays with Shakespeare dialogue
+// =============================================================================
+
+const CREAM = [0xed, 0xe4, 0xc8];
+
+const MOOD_COLORS = {
+  greeting:  { card: [0xd8, 0xcc, 0xaa], backdrop: [180, 160, 120] },
+  boast:     { card: [0xd4, 0xb8, 0x96], backdrop: [170, 140, 100] },
+  conflict:  { card: [0xb8, 0x84, 0x6a], backdrop: [140, 80,  60 ] },
+  devotion:  { card: [0xc4, 0x9a, 0x6c], backdrop: [160, 120, 80 ] },
+  despair:   { card: [0x9a, 0xaa, 0xb4], backdrop: [100, 120, 140] },
+  madness:   { card: [0x8a, 0xaa, 0x9a], backdrop: [90,  140, 120] },
+  triumph:   { card: [0xc4, 0xa8, 0x6c], backdrop: [160, 140, 80 ] },
+  prophecy:  { card: [0x9a, 0xb0, 0x9a], backdrop: [100, 140, 110] },
+  farewell:  { card: [0x9a, 0xa4, 0xb0], backdrop: [100, 115, 135] },
+};
+
+const CORPUS = [
+  // ── GREETING ──
+  { text: 'Well met by moonlight!', cat: 'greeting', tone: 'wild' },
+  { text: 'Friends, Romans, countrymen, lend me your ears!', cat: 'greeting', tone: 'royal' },
+  { text: 'How now, spirit! Whither wander you?', cat: 'greeting', tone: 'wild' },
+  { text: 'This cell is my court. Welcome, sir.', cat: 'greeting', tone: 'royal' },
+  { text: 'You tremble and look pale.', cat: 'greeting', tone: 'gentle' },
+  { text: 'Angels and ministers of grace defend us!', cat: 'greeting', tone: 'dark' },
+  { text: 'Who goes there?', cat: 'greeting', tone: 'dark' },
+  { text: 'Why do you keep alone?', cat: 'greeting', tone: 'gentle' },
+  { text: 'How now, you secret, black, and midnight hags!', cat: 'greeting', tone: 'dark' },
+  { text: 'All hail, great master!', cat: 'greeting', tone: 'royal' },
+  { text: 'I do desire we may be better strangers.', cat: 'greeting', tone: 'comic' },
+  { text: 'Who is it that can tell me who I am?', cat: 'greeting', tone: 'dark' },
+  { text: 'How sweet the moonlight sleeps upon this bank!', cat: 'greeting', tone: 'gentle' },
+  { text: 'So foul and fair a day I have not seen.', cat: 'greeting', tone: 'dark' },
+  { text: 'I know thee not, old man.', cat: 'greeting', tone: 'royal' },
+  { text: 'Thou comest in such a questionable shape.', cat: 'greeting', tone: 'dark' },
+  { text: 'Good morrow to you both.', cat: 'greeting', tone: 'gentle' },
+  { text: 'Speak if you can: what are you?', cat: 'greeting', tone: 'dark' },
+  { text: 'How now? Who calls?', cat: 'greeting', tone: 'comic' },
+  { text: 'Hail to thee, thane of Glamis!', cat: 'greeting', tone: 'royal' },
+  // ── BOAST ──
+  { text: 'I am not what I am.', cat: 'boast', tone: 'dark' },
+  { text: 'I dare do all that may become a man.', cat: 'boast', tone: 'royal' },
+  { text: 'I am a man more sinned against than sinning.', cat: 'boast', tone: 'royal' },
+  { text: 'My crown is in my heart, not on my head.', cat: 'boast', tone: 'royal' },
+  { text: 'I am constant as the northern star.', cat: 'boast', tone: 'royal' },
+  { text: 'I am fire and air; my other elements I give to baser life.', cat: 'boast', tone: 'wild' },
+  { text: 'I bear a charmed life.', cat: 'boast', tone: 'dark' },
+  { text: 'I have immortal longings in me.', cat: 'boast', tone: 'wild' },
+  { text: 'I can call spirits from the vasty deep.', cat: 'boast', tone: 'wild' },
+  { text: 'There is a world elsewhere.', cat: 'boast', tone: 'royal' },
+  { text: 'This royal throne of kings, this sceptred isle!', cat: 'boast', tone: 'royal' },
+  { text: 'I could be bounded in a nutshell and count myself a king of infinite space.', cat: 'boast', tone: 'gentle' },
+  { text: 'My tongue will tell the anger of my heart.', cat: 'boast', tone: 'wild' },
+  { text: 'Cry God for Harry, England, and Saint George!', cat: 'boast', tone: 'royal' },
+  { text: 'I am myself alone.', cat: 'boast', tone: 'dark' },
+  { text: 'The world is my oyster.', cat: 'boast', tone: 'comic' },
+  { text: 'I am not bound to please thee with my answers.', cat: 'boast', tone: 'dark' },
+  { text: 'Some are born great, some achieve greatness.', cat: 'boast', tone: 'comic' },
+  { text: 'I wasted time, and now doth time waste me.', cat: 'boast', tone: 'royal' },
+  { text: 'The empty vessel makes the loudest sound.', cat: 'boast', tone: 'comic' },
+  // ── CHALLENGE ──
+  { text: 'Thou art a villain!', cat: 'challenge', tone: 'dark' },
+  { text: 'Lay on, Macduff!', cat: 'challenge', tone: 'dark' },
+  { text: 'Come not between the dragon and his wrath.', cat: 'challenge', tone: 'royal' },
+  { text: 'I defy you, stars!', cat: 'challenge', tone: 'wild' },
+  { text: 'Tempt not a desperate man.', cat: 'challenge', tone: 'dark' },
+  { text: 'Stand and unfold yourself.', cat: 'challenge', tone: 'dark' },
+  { text: 'Once more unto the breach, dear friends!', cat: 'challenge', tone: 'royal' },
+  { text: 'O, beware, my lord, of jealousy!', cat: 'challenge', tone: 'dark' },
+  { text: 'Let me be cruel, not unnatural.', cat: 'challenge', tone: 'dark' },
+  { text: 'If you prick us, do we not bleed?', cat: 'challenge', tone: 'gentle' },
+  { text: 'Et tu, Brute?', cat: 'challenge', tone: 'royal' },
+  { text: 'We few, we happy few, we band of brothers!', cat: 'challenge', tone: 'royal' },
+  { text: 'Blow, winds, and crack your cheeks! Rage, blow!', cat: 'challenge', tone: 'wild' },
+  { text: 'Now, gods, stand up for bastards!', cat: 'challenge', tone: 'wild' },
+  { text: 'Speak, hands, for me!', cat: 'challenge', tone: 'dark' },
+  { text: 'Is this a dagger which I see before me?', cat: 'challenge', tone: 'dark' },
+  { text: 'Have at thee, coward!', cat: 'challenge', tone: 'wild' },
+  { text: 'Come, fate, into the lists, and champion me!', cat: 'challenge', tone: 'dark' },
+  { text: 'Out of my sight! Thou dost infect mine eyes.', cat: 'challenge', tone: 'dark' },
+  { text: 'Stiffen the sinews, summon up the blood!', cat: 'challenge', tone: 'royal' },
+  // ── DEVOTION ──
+  { text: 'But soft, what light through yonder window breaks?', cat: 'devotion', tone: 'gentle' },
+  { text: 'My bounty is as boundless as the sea, my love as deep.', cat: 'devotion', tone: 'gentle' },
+  { text: 'I would not wish any companion in the world but you.', cat: 'devotion', tone: 'gentle' },
+  { text: 'Doubt thou the stars are fire, but never doubt I love.', cat: 'devotion', tone: 'royal' },
+  { text: 'Shall I compare thee to a summer\'s day?', cat: 'devotion', tone: 'gentle' },
+  { text: 'Love looks not with the eyes, but with the mind.', cat: 'devotion', tone: 'gentle' },
+  { text: 'The course of true love never did run smooth.', cat: 'devotion', tone: 'gentle' },
+  { text: 'Who ever loved that loved not at first sight?', cat: 'devotion', tone: 'comic' },
+  { text: 'Hear my soul speak. The very instant that I saw you, did my heart fly to your service.', cat: 'devotion', tone: 'gentle' },
+  { text: 'I do love nothing in the world so well as you.', cat: 'devotion', tone: 'gentle' },
+  { text: 'My heart is ever at your service.', cat: 'devotion', tone: 'gentle' },
+  { text: 'You have witchcraft in your lips.', cat: 'devotion', tone: 'royal' },
+  { text: 'Come what sorrow can, it cannot countervail the exchange of joy.', cat: 'devotion', tone: 'gentle' },
+  { text: 'Love all, trust a few, do wrong to none.', cat: 'devotion', tone: 'gentle' },
+  { text: 'I pray you, do not fall in love with me, for I am falser than vows made in wine.', cat: 'devotion', tone: 'comic' },
+  { text: 'If music be the food of love, play on.', cat: 'devotion', tone: 'gentle' },
+  { text: 'Journeys end in lovers meeting.', cat: 'devotion', tone: 'gentle' },
+  { text: 'Take, O take those lips away.', cat: 'devotion', tone: 'gentle' },
+  { text: 'She loved me for the dangers I had passed, and I loved her that she did pity them.', cat: 'devotion', tone: 'royal' },
+  { text: 'So they loved, as love in twain had the essence but in one.', cat: 'devotion', tone: 'gentle' },
+  // ── INSULT ──
+  { text: 'More of your conversation would infect my brain.', cat: 'insult', tone: 'royal' },
+  { text: 'Thou art a boil, a plague sore!', cat: 'insult', tone: 'wild' },
+  { text: 'Thou lump of foul deformity!', cat: 'insult', tone: 'wild' },
+  { text: 'Away, you three-inch fool!', cat: 'insult', tone: 'comic' },
+  { text: 'You are not worth the dust which the rude wind blows in your face.', cat: 'insult', tone: 'royal' },
+  { text: 'Thou clay-brained guts, thou knotty-pated fool!', cat: 'insult', tone: 'comic' },
+  { text: 'I am sick when I do look on thee.', cat: 'insult', tone: 'dark' },
+  { text: 'Would thou wert clean enough to spit upon!', cat: 'insult', tone: 'dark' },
+  { text: 'Thou unfit for any place but hell!', cat: 'insult', tone: 'dark' },
+  { text: 'You scullion! You rampallian!', cat: 'insult', tone: 'comic' },
+  { text: 'Thy tongue outvenoms all the worms of Nile.', cat: 'insult', tone: 'dark' },
+  { text: 'Thou art like a toad: ugly and venomous.', cat: 'insult', tone: 'dark' },
+  { text: 'You blocks, you stones, you worse than senseless things!', cat: 'insult', tone: 'royal' },
+  { text: 'Thou hast no more brain than I have in mine elbows.', cat: 'insult', tone: 'comic' },
+  { text: 'The tartness of his face sours ripe grapes.', cat: 'insult', tone: 'comic' },
+  { text: 'Your brain is as dry as the remainder biscuit after a voyage.', cat: 'insult', tone: 'comic' },
+  { text: 'Villain, I have done thy mother.', cat: 'insult', tone: 'wild' },
+  { text: 'I do wish thou wert a dog, that I might love thee something.', cat: 'insult', tone: 'comic' },
+  { text: 'Methinks thou art a general offence, and every man should beat thee.', cat: 'insult', tone: 'comic' },
+  { text: 'Thou whoreson, senseless villain!', cat: 'insult', tone: 'wild' },
+  // ── DESPAIR ──
+  { text: 'O, what a fall was there!', cat: 'despair', tone: 'royal' },
+  { text: 'To be, or not to be: that is the question.', cat: 'despair', tone: 'royal' },
+  { text: 'Out, out, brief candle!', cat: 'despair', tone: 'dark' },
+  { text: 'All is but toys. Renown and grace is dead.', cat: 'despair', tone: 'dark' },
+  { text: 'O, that this too, too solid flesh would melt.', cat: 'despair', tone: 'dark' },
+  { text: 'How sharper than a serpent\'s tooth it is to have a thankless child.', cat: 'despair', tone: 'royal' },
+  { text: 'My desolation does begin to make a better life.', cat: 'despair', tone: 'royal' },
+  { text: 'Men must endure their going hence, even as their coming hither.', cat: 'despair', tone: 'gentle' },
+  { text: 'When sorrows come, they come not single spies, but in battalions.', cat: 'despair', tone: 'royal' },
+  { text: 'O, I am fortune\'s fool!', cat: 'despair', tone: 'wild' },
+  { text: 'Grief fills the room up of my absent child.', cat: 'despair', tone: 'gentle' },
+  { text: 'The weight of this sad time we must obey.', cat: 'despair', tone: 'gentle' },
+  { text: 'My way of life is fallen into the sere, the yellow leaf.', cat: 'despair', tone: 'dark' },
+  { text: 'Howl, howl, howl! O, you are men of stones!', cat: 'despair', tone: 'wild' },
+  { text: 'Here I stand, a poor, infirm, weak, and despised old man.', cat: 'despair', tone: 'royal' },
+  { text: 'What\'s gone and what\'s past help should be past grief.', cat: 'despair', tone: 'gentle' },
+  { text: 'O, what a rogue and peasant slave am I!', cat: 'despair', tone: 'dark' },
+  { text: 'Nothing will come of nothing.', cat: 'despair', tone: 'royal' },
+  { text: 'I am a very foolish fond old man.', cat: 'despair', tone: 'gentle' },
+  { text: 'Things without all remedy should be without regard.', cat: 'despair', tone: 'dark' },
+  // ── MADNESS ──
+  { text: 'I am but mad north-north-west.', cat: 'madness', tone: 'comic' },
+  { text: 'O, let me not be mad, not mad, sweet heaven!', cat: 'madness', tone: 'royal' },
+  { text: 'Though this be madness, yet there is method in\'t.', cat: 'madness', tone: 'comic' },
+  { text: 'Lord, what fools these mortals be!', cat: 'madness', tone: 'comic' },
+  { text: 'The lunatic, the lover, and the poet are of imagination all compact.', cat: 'madness', tone: 'gentle' },
+  { text: 'I am not mad; I would to heaven I were!', cat: 'madness', tone: 'dark' },
+  { text: 'What a piece of work is man!', cat: 'madness', tone: 'dark' },
+  { text: 'Full of scorpions is my mind!', cat: 'madness', tone: 'dark' },
+  { text: 'Why, this is very midsummer madness!', cat: 'madness', tone: 'comic' },
+  { text: 'My wits begin to turn.', cat: 'madness', tone: 'dark' },
+  { text: 'Double, double, toil and trouble!', cat: 'madness', tone: 'wild' },
+  { text: 'That way madness lies; let me shun that.', cat: 'madness', tone: 'gentle' },
+  { text: 'A tale told by an idiot, full of sound and fury, signifying nothing.', cat: 'madness', tone: 'dark' },
+  { text: 'Canst thou not minister to a mind diseased?', cat: 'madness', tone: 'dark' },
+  { text: 'There are more things in heaven and earth than are dreamt of in your philosophy.', cat: 'madness', tone: 'gentle' },
+  { text: 'The earth has bubbles, as the water has.', cat: 'madness', tone: 'gentle' },
+  { text: 'Come, seeling night, scarf up the tender eye of pitiful day.', cat: 'madness', tone: 'dark' },
+  { text: 'Are you a god? Would you create me new?', cat: 'madness', tone: 'wild' },
+  { text: 'He is far gone, far gone.', cat: 'madness', tone: 'gentle' },
+  { text: 'Haste me to know it, that I may sweep to my revenge.', cat: 'madness', tone: 'dark' },
+  // ── PROPHECY ──
+  { text: 'We are such stuff as dreams are made on.', cat: 'prophecy', tone: 'gentle' },
+  { text: 'Beware the ides of March.', cat: 'prophecy', tone: 'dark' },
+  { text: 'By the pricking of my thumbs, something wicked this way comes.', cat: 'prophecy', tone: 'dark' },
+  { text: 'There is a tide in the affairs of men.', cat: 'prophecy', tone: 'royal' },
+  { text: 'All that glisters is not gold.', cat: 'prophecy', tone: 'gentle' },
+  { text: 'The better part of valour is discretion.', cat: 'prophecy', tone: 'comic' },
+  { text: 'This above all: to thine own self be true.', cat: 'prophecy', tone: 'gentle' },
+  { text: 'The fault, dear Brutus, is not in our stars, but in ourselves.', cat: 'prophecy', tone: 'royal' },
+  { text: 'Uneasy lies the head that wears a crown.', cat: 'prophecy', tone: 'royal' },
+  { text: 'What\'s done is done.', cat: 'prophecy', tone: 'dark' },
+  { text: 'The wheel is come full circle.', cat: 'prophecy', tone: 'dark' },
+  { text: 'There is nothing either good or bad, but thinking makes it so.', cat: 'prophecy', tone: 'gentle' },
+  { text: 'Brevity is the soul of wit.', cat: 'prophecy', tone: 'comic' },
+  { text: 'The lady doth protest too much, methinks.', cat: 'prophecy', tone: 'comic' },
+  { text: 'Something is rotten in the state of Denmark.', cat: 'prophecy', tone: 'dark' },
+  { text: 'What\'s in a name? A rose by any other name would smell as sweet.', cat: 'prophecy', tone: 'gentle' },
+  { text: 'Fair is foul, and foul is fair.', cat: 'prophecy', tone: 'dark' },
+  { text: 'What\'s past is prologue.', cat: 'prophecy', tone: 'royal' },
+  { text: 'All the world\'s a stage.', cat: 'prophecy', tone: 'gentle' },
+  { text: 'Misery acquaints a man with strange bedfellows.', cat: 'prophecy', tone: 'comic' },
+  // ── TRIUMPH ──
+  { text: 'Now is the winter of our discontent made glorious summer!', cat: 'triumph', tone: 'dark' },
+  { text: 'The game\'s afoot! Follow your spirit!', cat: 'triumph', tone: 'royal' },
+  { text: 'Joy, gentle friends! Joy and fresh days of love!', cat: 'triumph', tone: 'gentle' },
+  { text: 'O wonderful, wonderful, and most wonderful!', cat: 'triumph', tone: 'comic' },
+  { text: 'How beauteous mankind is! O brave new world!', cat: 'triumph', tone: 'gentle' },
+  { text: 'Be not afraid of greatness!', cat: 'triumph', tone: 'comic' },
+  { text: 'I have done the state some service, and they know\'t.', cat: 'triumph', tone: 'royal' },
+  { text: 'Our revels now are ended.', cat: 'triumph', tone: 'gentle' },
+  { text: 'The bright day is done, and we are for the dark.', cat: 'triumph', tone: 'dark' },
+  { text: 'This was the noblest Roman of them all.', cat: 'triumph', tone: 'royal' },
+  { text: 'All\'s well that ends well.', cat: 'triumph', tone: 'gentle' },
+  { text: 'We have heard the chimes at midnight.', cat: 'triumph', tone: 'comic' },
+  { text: 'If we shadows have offended, think but this and all is mended.', cat: 'triumph', tone: 'gentle' },
+  { text: 'Strong reasons make strong actions.', cat: 'triumph', tone: 'royal' },
+  { text: 'With mirth and laughter let old wrinkles come.', cat: 'triumph', tone: 'comic' },
+  { text: 'There is a history in all men\'s lives.', cat: 'triumph', tone: 'royal' },
+  { text: 'O day and night, but this is wondrous strange!', cat: 'triumph', tone: 'gentle' },
+  { text: 'A hit, a very palpable hit!', cat: 'triumph', tone: 'comic' },
+  { text: 'I have set my life upon a cast, and I will stand the hazard of the die!', cat: 'triumph', tone: 'dark' },
+  { text: 'Suit the action to the word, the word to the action.', cat: 'triumph', tone: 'gentle' },
+  // ── FAREWELL ──
+  { text: 'The rest is silence.', cat: 'farewell', tone: 'dark' },
+  { text: 'Good night, good night! Parting is such sweet sorrow.', cat: 'farewell', tone: 'gentle' },
+  { text: 'Good night, sweet prince, and flights of angels sing thee to thy rest.', cat: 'farewell', tone: 'gentle' },
+  { text: 'If we do meet again, why, we shall smile.', cat: 'farewell', tone: 'royal' },
+  { text: 'Farewell! Thou art too dear for my possessing.', cat: 'farewell', tone: 'gentle' },
+  { text: 'I have a journey, sir, shortly to go. My master calls me.', cat: 'farewell', tone: 'gentle' },
+  { text: 'Thus with a kiss I die.', cat: 'farewell', tone: 'gentle' },
+  { text: 'Adieu, adieu, adieu! Remember me.', cat: 'farewell', tone: 'dark' },
+  { text: 'The undiscovered country from whose bourn no traveller returns.', cat: 'farewell', tone: 'dark' },
+  { text: 'We shall not look upon his like again.', cat: 'farewell', tone: 'royal' },
+  { text: 'Farewell, a long farewell, to all my greatness!', cat: 'farewell', tone: 'royal' },
+  { text: 'I am dying, Egypt, dying.', cat: 'farewell', tone: 'royal' },
+  { text: 'Every third thought shall be my grave.', cat: 'farewell', tone: 'dark' },
+  { text: 'The long day\'s task is done, and we must sleep.', cat: 'farewell', tone: 'gentle' },
+  { text: 'Now my charms are all o\'erthrown.', cat: 'farewell', tone: 'gentle' },
+  { text: 'Ripeness is all.', cat: 'farewell', tone: 'gentle' },
+  { text: 'Give me your hands, if we be friends.', cat: 'farewell', tone: 'gentle' },
+  { text: 'As flies to wanton boys are we to the gods.', cat: 'farewell', tone: 'dark' },
+  { text: 'Let us not burden our remembrances with a heaviness that\'s gone.', cat: 'farewell', tone: 'gentle' },
+  { text: 'Come, let us away. We two alone will sing like birds in the cage.', cat: 'farewell', tone: 'gentle' },
+];
+
+const STAGE_DIRS_OPEN = [
+  'Enter, from opposite ends of the stage.',
+  'They appear, as if summoned.',
+  'The curtain rises on an empty stage. Then—',
+  'Two figures emerge from the wings.',
+  'Enter, in haste.',
+  'They arrive by separate doors.',
+  'A spotlight finds them, one by one.',
+  'They step forward, uncertain.',
+];
+
+const STAGE_DIRS_MID = [
+  'They circle one another.',
+  'A silence falls.',
+  'Thunder in the distance.',
+  'The light shifts.',
+  'They pause and consider.',
+  'An uneasy stillness.',
+  'The wind rises.',
+  'They turn to face one another.',
+  'A bell tolls, far off.',
+  'A shadow crosses the stage.',
+  'They draw closer.',
+  'One steps back. The other follows.',
+  'The air grows heavy.',
+  'Something stirs in the wings.',
+  'A door slams, unseen.',
+  'They stand at arm\'s length.',
+  'The candles gutter.',
+  'Rain begins, softly.',
+  'Aside, to the audience—',
+  'They freeze. Then, slowly—',
+  'Music, from somewhere far away.',
+  'The scene darkens.',
+  'They pace, restless.',
+  'A clock strikes the hour.',
+];
+
+const ARC_TEMPLATES = [
+  { name: 'The Rivalry', acts: [
+    [['greeting',0],['greeting',1],['boast',0],['challenge',1]],
+    [['insult',1],['challenge',0],['despair',1]],
+    [['prophecy',0],['triumph',1],['farewell',0]],
+  ]},
+  { name: 'The Romance', acts: [
+    [['greeting',0],['devotion',1],['devotion',0]],
+    [['challenge',1],['despair',0],['madness',1]],
+    [['prophecy',0],['devotion',1],['farewell',0]],
+  ]},
+  { name: 'The Tragedy', acts: [
+    [['greeting',0],['boast',1],['challenge',0]],
+    [['insult',1],['madness',0],['despair',1]],
+    [['prophecy',0],['despair',1],['farewell',0]],
+  ]},
+  { name: 'The Comedy', acts: [
+    [['greeting',0],['insult',1],['boast',0],['insult',1]],
+    [['challenge',0],['madness',1],['insult',0]],
+    [['prophecy',1],['triumph',0],['farewell',1]],
+  ]},
+  { name: 'The Dream', acts: [
+    [['greeting',0],['prophecy',1],['devotion',0]],
+    [['madness',1],['despair',0],['prophecy',1]],
+    [['madness',0],['triumph',1],['farewell',0]],
+  ]},
+  { name: 'The Trial', acts: [
+    [['greeting',0],['challenge',1],['boast',0]],
+    [['insult',1],['challenge',0],['despair',1]],
+    [['prophecy',0],['triumph',0],['farewell',1]],
+  ]},
+];
+
+const TITLE_FORMATS = [
+  (a, b) => a + '  &  ' + b,
+  (a, b) => 'The Tale of ' + a + ' & ' + b,
+  (a, b, arc) => a + ' & ' + b + ':  ' + arc,
+  (a, b, arc) => arc + ':  ' + a + ' & ' + b,
+  (a, b) => a + '  ·  ' + b,
+  (a, b) => 'A Play of ' + a + ' and ' + b,
+];
+
+function makeTitle(a, b, arcName) {
+  const fmt = TITLE_FORMATS[Math.floor(Math.random() * TITLE_FORMATS.length)];
+  return fmt(a, b, arcName);
+}
+
+const ACT_NAMES = ['I', 'II', 'III'];
+const CAT_TO_MOOD = {
+  greeting: 'greeting', boast: 'boast', challenge: 'conflict',
+  devotion: 'devotion', insult: 'conflict', despair: 'despair',
+  madness: 'madness', prophecy: 'prophecy', triumph: 'triumph',
+  farewell: 'farewell',
+};
+
+function pickLine(cat, preferTone, used) {
+  let pool = CORPUS.filter(l => l.cat === cat && l.tone === preferTone && !used.has(l.text));
+  if (pool.length === 0) pool = CORPUS.filter(l => l.cat === cat && !used.has(l.text));
+  if (pool.length === 0) pool = CORPUS.filter(l => l.cat === cat);
+  const line = pool[Math.floor(Math.random() * pool.length)];
+  used.add(line.text);
+  return line;
+}
+
+function generateScript() {
+  const arc  = ARC_TEMPLATES[Math.floor(Math.random() * ARC_TEMPLATES.length)];
+  const used = new Set();
+  const tones = [perf[0].tags[0] || 'gentle', perf[1].tags[0] || 'gentle'];
+  const script = [];
+
+  const usedDirs = new Set();
+
+  arc.acts.forEach((actBeats, ai) => {
+    script.push({ act: ai+1, type: 'act-title', text: 'Act ' + ACT_NAMES[ai], mood: null, speaker: null });
+
+    const dirPool = ai === 0 ? STAGE_DIRS_OPEN : STAGE_DIRS_MID;
+    let avail = dirPool.filter(d => !usedDirs.has(d));
+    if (avail.length === 0) avail = dirPool;
+    const dir = avail[Math.floor(Math.random() * avail.length)];
+    usedDirs.add(dir);
+    script.push({ act: ai+1, type: 'direction', text: dir, mood: null, speaker: null });
+
+    for (const [cat, sp] of actBeats) {
+      const line = pickLine(cat, tones[sp], used);
+      script.push({ act: ai+1, type: 'line', speaker: sp, text: line.text, mood: CAT_TO_MOOD[cat] });
+    }
+  });
+
+  return { script, arcName: arc.name };
+}
+
+let playScript     = [];
+let playBeatIdx    = -1;
+let playCrankAccum = 0;
+let playEnded      = false;
+let windDown       = 1.0;
+const BEAT_BASE    = 2 * Math.PI;
+
+const MOOD_PACE = {
+  greeting: 1.0,  boast: 0.9,  conflict: 0.65,
+  devotion: 1.15, despair: 1.25, madness: 0.55,
+  prophecy: 1.2,  triumph: 0.80, farewell: 1.4,
+};
+
+function beatPace(idx) {
+  if (idx < 0 || idx >= playScript.length) return 1.0;
+  const b = playScript[idx];
+  if (b.type === 'title' || b.type === 'fin') return 0.7;
+  if (b.type === 'act-title') return 0.8;
+  if (b.type === 'direction') return 0.5;
+  if (!b.mood) return 0.5;
+  return MOOD_PACE[b.mood] || 1.0;
+}
+
+let cueCards = [];
+
+function activateBeat(beat) {
+  for (const c of cueCards) {
+    if (c.phase !== 'exiting') { c.phase = 'exiting'; c.phaseT = 0; }
+  }
+  if (!beat) return;
+  if (beat.type === 'title')     playTitleSting();
+  if (beat.type === 'act-title') playActSting();
+  if (beat.type === 'direction') playDirSting();
+  if (beat.type === 'fin')       playFinSting();
+  if (beat.type === 'line' && beat.speaker !== null && beat.mood) {
+    spawnEmotionGlyphs(beat.speaker, beat.mood);
+  }
+  cueCards.push({
+    text:     beat.text,
+    type:     beat.type,
+    speaker:  beat.speaker,
+    mood:     beat.mood,
+    phase:    'entering',
+    phaseT:   0,
+    rotation: (Math.random() - 0.5) * 0.035,
+  });
+}
+
+let suffusion = { mood: null, intensity: 0, speakerIdx: -1 };
+
+function lerpColor(a, b, t) {
+  return [
+    Math.round(a[0] + (b[0] - a[0]) * t),
+    Math.round(a[1] + (b[1] - a[1]) * t),
+    Math.round(a[2] + (b[2] - a[2]) * t),
+  ];
+}
+
+function cardTintForPuppet(puppetIdx) {
+  if (!suffusion.mood || suffusion.intensity <= 0) return null;
+  if (puppetIdx !== suffusion.speakerIdx) return null;
+  const mc = MOOD_COLORS[suffusion.mood];
+  if (!mc) return null;
+  const c = lerpColor(CREAM, mc.card, suffusion.intensity);
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+function backdropWashColor() {
+  if (!suffusion.mood || suffusion.intensity <= 0) return null;
+  const mc = MOOD_COLORS[suffusion.mood];
+  if (!mc) return null;
+  const base = [0xd8, 0xcc, 0xaa];
+  const c = lerpColor(base, mc.card, suffusion.intensity * 0.45);
+  return `rgb(${c[0]},${c[1]},${c[2]})`;
+}
+
+function updateSuffusion() {
+  let active = null;
+  for (let i = cueCards.length - 1; i >= 0; i--) {
+    if (cueCards[i].mood && cueCards[i].phase !== 'gone') { active = cueCards[i]; break; }
+  }
+  if (active) {
+    suffusion.mood = active.mood;
+    suffusion.speakerIdx = active.speaker;
+    if (active.phase === 'entering') {
+      suffusion.intensity = easeOut(Math.min(active.phaseT / 0.4, 1));
+    } else if (active.phase === 'holding') {
+      suffusion.intensity = 1;
+    } else if (active.phase === 'exiting') {
+      suffusion.intensity = 1 - easeIn(Math.min(active.phaseT / 0.8, 1));
+    }
+  } else {
+    suffusion.intensity *= 0.92;
+    if (suffusion.intensity < 0.01) { suffusion.intensity = 0; suffusion.mood = null; }
+  }
+}
+
+function startPlay() {
+  const gen = generateScript();
+  const title = makeTitle(perf[0].name, perf[1].name, gen.arcName);
+  playScript = [
+    { act: 0, type: 'title', text: title, mood: null, speaker: null },
+    ...gen.script,
+    { act: 4, type: 'fin', text: 'Fin', mood: null, speaker: null },
+  ];
+  playBeatIdx    = -1;
+  playCrankAccum = BEAT_BASE * 0.75;
+  cueCards       = [];
+  suffusion      = { mood: null, intensity: 0, speakerIdx: -1 };
+  emotionParticles = [];
+  playEnded      = false;
+  windDown       = 1.0;
+}
+
+// --- Emotion glyph particles ---
+
+const EMOTION_GLYPHS = {
+  greeting:  ['✦', '·', '★'],
+  boast:     ['★', '✦', '♔'],
+  conflict:  ['@', '#', '$', '%', '!', '&'],
+  devotion:  ['♥', '❦', '✿'],
+  despair:   ['◦', '·', '˙'],
+  madness:   ['?', '!', '◎', '※'],
+  prophecy:  ['✦', '◈', '★'],
+  triumph:   ['★', '!', '♔'],
+  farewell:  ['·', '◦', '∘'],
+};
+
+let emotionParticles = [];
+
+function puppetCardTop(pIdx) {
+  const p = perf[pIdx];
+  if (!p) return null;
+  const pos = p.track.pt(p.angle);
+  const yOff = currentYOffset();
+  const bob = p.bob(p.angle) * 1.125;
+  const stickH = 52 * 1.125;
+  // card top: stage surface + yOffset + bob - stick - full card height
+  return [pos[0], pos[1] + yOff + bob - stickH - p.cardH];
+}
+
+function spawnEmotionGlyphs(speakerIdx, mood) {
+  const top = puppetCardTop(speakerIdx);
+  if (!top) return;
+  const pool = EMOTION_GLYPHS[mood] || EMOTION_GLYPHS.greeting;
+  const count = 3 + Math.floor(Math.random() * 3);
+  for (let i = 0; i < count; i++) {
+    emotionParticles.push({
+      glyph: pool[Math.floor(Math.random() * pool.length)],
+      x: top[0] + (Math.random() - 0.5) * 40,
+      y: top[1] - Math.random() * 12,
+      vx: (Math.random() - 0.5) * 20,
+      vy: -12 - Math.random() * 18,
+      life: 0,
+      maxLife: 2.5 + Math.random() * 1.5,
+      size: 24 + Math.random() * 14,
+      rot: (Math.random() - 0.5) * 0.4,
+      rotV: (Math.random() - 0.5) * 0.6,
+    });
+  }
+}
+
+function drawEmotionParticles() {
+  for (const p of emotionParticles) {
+    const t = p.life / p.maxLife;
+    const a = t < 0.1 ? t / 0.1 : t > 0.75 ? (1 - t) / 0.25 : 1.0;
+    if (a <= 0.01) continue;
+    ctx.save();
+    ctx.globalAlpha = a * 0.88;
+    ctx.translate(p.x, p.y);
+    ctx.rotate(p.rot);
+    ctx.font = 'bold ' + p.size + 'px Georgia, "Times New Roman", serif';
+    ctx.fillStyle = '#8a8a90';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(p.glyph, 0, 0);
+    ctx.restore();
+  }
+}
 
 // =============================================================================
 // STARS — scattered in the dark canvas area surrounding the stage box.
@@ -405,16 +964,56 @@ function pluckNote(freq, vol, delay) {
   osc2.start(t0); osc2.stop(t0 + 1.0);
 }
 
+const MOOD_MUSIC = {
+  greeting:  { highCh: 0.30, vol: 0.22, harmCh: 0.22, harmR: 1.5,   minGap: 0.24, gapRng: 0.48 },
+  boast:     { highCh: 0.35, vol: 0.24, harmCh: 0.28, harmR: 1.5,   minGap: 0.22, gapRng: 0.44 },
+  conflict:  { highCh: 0.40, vol: 0.28, harmCh: 0.35, harmR: 1.189, minGap: 0.12, gapRng: 0.22 },
+  devotion:  { highCh: 0.25, vol: 0.18, harmCh: 0.40, harmR: 1.5,   minGap: 0.35, gapRng: 0.60 },
+  despair:   { highCh: 0.05, vol: 0.16, harmCh: 0.10, harmR: 1.5,   minGap: 0.55, gapRng: 1.10 },
+  madness:   { highCh: 0.60, vol: 0.26, harmCh: 0.50, harmR: 1.189, minGap: 0.06, gapRng: 0.16 },
+  prophecy:  { highCh: 0.20, vol: 0.16, harmCh: 0.15, harmR: 1.5,   minGap: 0.50, gapRng: 0.90 },
+  triumph:   { highCh: 0.55, vol: 0.26, harmCh: 0.35, harmR: 1.5,   minGap: 0.16, gapRng: 0.30 },
+  farewell:  { highCh: 0.15, vol: 0.14, harmCh: 0.18, harmR: 1.5,   minGap: 0.40, gapRng: 0.80 },
+};
+
 function triggerNote() {
   if (!audioCtx) return;
-  const pool = Math.random() < 0.70 ? KALIMBA_CORE : KALIMBA_HIGH;
-  const freq  = pool[Math.floor(Math.random() * pool.length)];
-  pluckNote(freq, 0.22);
-  if (Math.random() < 0.22) {
-    const hFreq = freq * (Math.random() < 0.55 ? 1.5 : 1.189);
-    if (hFreq < 1200) pluckNote(hFreq, 0.10, 0.045);
+  const m = MOOD_MUSIC[suffusion.mood] || MOOD_MUSIC.greeting;
+  const pool = Math.random() < m.highCh ? KALIMBA_HIGH : KALIMBA_CORE;
+  const freq = pool[Math.floor(Math.random() * pool.length)];
+  pluckNote(freq, m.vol);
+  if (Math.random() < m.harmCh) {
+    const hFreq = freq * (Math.random() < 0.55 ? m.harmR : 1.5);
+    if (hFreq < 1200) pluckNote(hFreq, m.vol * 0.45, 0.045);
   }
-  noteTimer = 0.28 + Math.random() * 0.57;
+  noteTimer = m.minGap + Math.random() * m.gapRng;
+}
+
+function playTitleSting() {
+  if (!audioCtx) return;
+  pluckNote(293.66, 0.20, 0);
+  pluckNote(349.23, 0.20, 0.12);
+  pluckNote(440.00, 0.20, 0.24);
+  pluckNote(587.33, 0.22, 0.36);
+}
+
+function playActSting() {
+  if (!audioCtx) return;
+  pluckNote(293.66, 0.18, 0);
+  pluckNote(440.00, 0.15, 0.03);
+}
+
+function playDirSting() {
+  if (!audioCtx) return;
+  pluckNote(622.25, 0.10, 0);
+}
+
+function playFinSting() {
+  if (!audioCtx) return;
+  pluckNote(587.33, 0.18, 0);
+  pluckNote(440.00, 0.17, 0.15);
+  pluckNote(349.23, 0.15, 0.30);
+  pluckNote(293.66, 0.13, 0.45);
 }
 
 // =============================================================================
@@ -466,7 +1065,7 @@ function drawBackdrop() {
   const y0 = btl[1] - BACKDROP_H;
   const w  = x1 - x0, h = BACKDROP_H;
 
-  ctx.fillStyle = '#d8ccaa';
+  ctx.fillStyle = backdropWashColor() || '#d8ccaa';
   ctx.fillRect(x0, y0, w, h);
 
   const img = backdropImgs[backdropIdx];
@@ -592,7 +1191,7 @@ function drawCrankArm() {
   ctx.beginPath(); ctx.arc(kx, ky, 7, 0, Math.PI*2); ctx.fill(); ctx.stroke();
 }
 
-function drawPuppet(p, yOffset, alpha) {
+function drawPuppet(p, yOffset, alpha, cardTint) {
   const PUPPET_SCALE = 1.125;
   const stickH = 52 * PUPPET_SCALE;     // ~58.5 px
 
@@ -617,7 +1216,7 @@ function drawPuppet(p, yOffset, alpha) {
   ctx.rotate(cardTilt);
 
   const bx = -p.cardW / 2, by = -p.cardH;
-  ctx.fillStyle = '#ede4c8'; ctx.strokeStyle = '#1a1206'; ctx.lineWidth = 1.0;
+  ctx.fillStyle = cardTint || '#ede4c8'; ctx.strokeStyle = '#1a1206'; ctx.lineWidth = 1.0;
   ctx.beginPath(); ctx.rect(bx, by, p.cardW, p.cardH); ctx.fill(); ctx.stroke();
 
   if (p.img.complete && p.img.naturalWidth > 0) {
@@ -630,6 +1229,128 @@ function drawPuppet(p, yOffset, alpha) {
 
   ctx.restore();
   ctx.restore();
+}
+
+function wrapText(text, font, maxW) {
+  ctx.font = font;
+  const words = text.split(' ');
+  const lines = [];
+  let line = '';
+  for (const w of words) {
+    const test = line ? line + ' ' + w : w;
+    if (ctx.measureText(test).width > maxW && line) {
+      lines.push(line);
+      line = w;
+    } else {
+      line = test;
+    }
+  }
+  if (line) lines.push(line);
+  return lines;
+}
+
+function drawCueCards(ts) {
+  if (openState !== 'playing' && openState !== 'open') return;
+
+  const CUE_Y = 55;
+  const CUE_X = 320;
+  const FONT_LINE    = 'italic 15px Georgia, "Times New Roman", serif';
+  const FONT_SPEAKER = 'bold 11px Georgia, "Times New Roman", serif';
+  const FONT_DIR     = 'italic 13px Georgia, "Times New Roman", serif';
+  const FONT_ACT     = '20px Georgia, "Times New Roman", serif';
+
+  for (const c of cueCards) {
+    let alpha, yShift = 0;
+
+    if (c.phase === 'entering') {
+      const t = Math.min(c.phaseT / 0.4, 1);
+      alpha = easeOut(t);
+      yShift = (1 - t) * 5;
+    } else if (c.phase === 'holding') {
+      alpha = 1;
+      yShift = Math.sin(ts * 0.001 * 0.8) * 1;
+    } else if (c.phase === 'exiting') {
+      const t = Math.min(c.phaseT / 0.8, 1);
+      alpha = 1 - easeIn(t);
+      yShift = -t * 10;
+    } else continue;
+
+    if (alpha <= 0.01) continue;
+
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(CUE_X, CUE_Y + yShift);
+    ctx.rotate(c.rotation);
+
+    if (c.type === 'act-title' || c.type === 'title' || c.type === 'fin') {
+      const isTitle = c.type === 'title';
+      const isFin   = c.type === 'fin';
+      ctx.font = isTitle ? 'italic 24px Georgia, "Times New Roman", serif'
+               : isFin   ? 'italic 19px Georgia, "Times New Roman", serif'
+               :            FONT_ACT;
+      ctx.fillStyle = isTitle ? '#b8a878' : '#c8b88a';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.shadowColor = 'rgba(0,0,0,0.5)';
+      ctx.shadowBlur = 6;
+      ctx.fillText(c.text, 0, 0);
+      ctx.shadowBlur = 0;
+    } else {
+      const isDir  = c.type === 'direction';
+      const font   = isDir ? FONT_DIR : FONT_LINE;
+      const lines  = wrapText(c.text, font, 360);
+      const lineH  = isDir ? 16 : 19;
+      const padX   = 18, padY = 10;
+
+      let speakerName = null;
+      if (c.type === 'line' && c.speaker !== null && perf.length > c.speaker) {
+        speakerName = perf[c.speaker].name;
+      }
+      const speakerH = speakerName ? 16 : 0;
+
+      ctx.font = font;
+      const textW = Math.max(...lines.map(l => ctx.measureText(l).width));
+      let headerW = 0;
+      if (speakerName) { ctx.font = FONT_SPEAKER; headerW = ctx.measureText(speakerName).width; }
+      const cardW = Math.max(textW, headerW) + padX * 2;
+      const cardH = speakerH + lines.length * lineH + padY * 2;
+
+      const rx = -cardW / 2, ry = -cardH / 2;
+
+      // Card shadow
+      ctx.shadowColor = 'rgba(0,0,0,0.35)';
+      ctx.shadowBlur = 8;
+      ctx.shadowOffsetY = 2;
+      ctx.fillStyle = '#ede4c8';
+      ctx.beginPath(); ctx.rect(rx, ry, cardW, cardH); ctx.fill();
+      ctx.shadowBlur = 0; ctx.shadowOffsetY = 0;
+
+      ctx.strokeStyle = 'rgba(26,18,6,0.4)';
+      ctx.lineWidth = 0.7;
+      ctx.stroke();
+
+      let ty = ry + padY;
+      if (speakerName) {
+        ctx.font = FONT_SPEAKER;
+        ctx.fillStyle = '#6a5a3a';
+        ctx.textAlign = 'left';
+        ctx.textBaseline = 'top';
+        ctx.fillText(speakerName, rx + padX, ty);
+        ty += speakerH;
+      }
+
+      ctx.font = font;
+      ctx.fillStyle = '#2a1e08';
+      ctx.textBaseline = 'top';
+      for (const ln of lines) {
+        if (isDir) { ctx.textAlign = 'center'; ctx.fillText(ln, 0, ty); }
+        else       { ctx.textAlign = 'left';   ctx.fillText(ln, rx + padX, ty); }
+        ty += lineH;
+      }
+    }
+
+    ctx.restore();
+  }
 }
 
 // =============================================================================
@@ -646,16 +1367,22 @@ function draw(ts) {
     if (openT >= 1) { openT = 1; openState = 'open'; }
   }
 
-  // Advance crank
+  // Advance crank (puppets wind down after play ends)
   if (running) {
-    for (const p of perf) p.angle += SPEED * dt;
-    crankA += SPEED * dt * 2.0;
-    noteTimer -= dt;
-    if (noteTimer <= 0) triggerNote();
-    tickTimer -= dt;
-    if (tickTimer <= 0) {
-      fireTick();
-      tickTimer = 0.06 + Math.random() * 0.08; // irregular: ~8–14 ticks/sec
+    if (playEnded) windDown = Math.max(0, windDown - dt * 0.35);
+    const dir = shiftHeld ? -1 : 1;
+    for (const p of perf) p.angle += SPEED * dt * dir * windDown;
+    crankA += SPEED * dt * 2.0 * dir;
+    if (!shiftHeld && windDown > 0.05) {
+      noteTimer -= dt;
+      if (noteTimer <= 0) triggerNote();
+    }
+    if (windDown > 0.05) {
+      tickTimer -= dt;
+      if (tickTimer <= 0) {
+        fireTick();
+        tickTimer = 0.06 + Math.random() * 0.08;
+      }
     }
   }
 
@@ -672,9 +1399,61 @@ function draw(ts) {
         transPhase = 'idle';
         transT     = 0;
         if (openState === 'open') openState = 'playing';
+        startPlay();
       }
     }
   }
+
+  // Advance play
+  if (running && playScript.length > 0 && openState === 'playing') {
+    const dir = shiftHeld ? -1 : 1;
+    playCrankAccum += SPEED * dt * dir;
+    const thresh = BEAT_BASE * beatPace(playBeatIdx);
+    if (playCrankAccum >= thresh) {
+      playCrankAccum -= thresh;
+      if (playBeatIdx < playScript.length - 1) {
+        playBeatIdx++;
+        activateBeat(playScript[playBeatIdx]);
+      } else if (playBeatIdx === playScript.length - 1) {
+        playBeatIdx++;
+        playEnded = true;
+        activateBeat(null);
+      }
+    } else if (playCrankAccum < 0) {
+      if (playBeatIdx >= playScript.length) {
+        playBeatIdx = playScript.length - 1;
+        playCrankAccum += BEAT_BASE * beatPace(playBeatIdx);
+        playEnded = false;
+        windDown  = 1.0;
+        activateBeat(playScript[playBeatIdx]);
+      } else if (playBeatIdx > 0) {
+        playBeatIdx--;
+        playCrankAccum += BEAT_BASE * beatPace(playBeatIdx);
+        activateBeat(playScript[playBeatIdx]);
+      } else {
+        playCrankAccum = 0;
+      }
+    }
+  }
+
+  // Update cue cards and suffusion
+  for (const c of cueCards) {
+    c.phaseT += dt;
+    if (c.phase === 'entering' && c.phaseT >= 0.4) { c.phase = 'holding'; c.phaseT = 0; }
+    if (c.phase === 'exiting'  && c.phaseT >= 0.8) { c.phase = 'gone'; }
+  }
+  cueCards = cueCards.filter(c => c.phase !== 'gone');
+  updateSuffusion();
+
+  // Update emotion particles
+  for (const ep of emotionParticles) {
+    ep.life += dt;
+    ep.x += ep.vx * dt;
+    ep.y += ep.vy * dt;
+    ep.vy *= 0.97;
+    ep.rot += ep.rotV * dt;
+  }
+  emotionParticles = emotionParticles.filter(ep => ep.life < ep.maxLife);
 
   const yOff  = currentYOffset();
   const alpha = currentAlpha();
@@ -699,7 +1478,10 @@ function draw(ts) {
   const sorted = [...perf].sort((a, b) =>
     a.track.pt(a.angle)[1] - b.track.pt(b.angle)[1]
   );
-  for (const p of sorted) drawPuppet(p, yOff, alpha);
+  for (const p of sorted) {
+    const tint = cardTintForPuppet(perf.indexOf(p));
+    drawPuppet(p, yOff, alpha, tint);
+  }
 
   // Lid rotates open like a laptop, revealing backdrop on inside face
   if (openState === 'closed') drawLid(0);
@@ -714,6 +1496,9 @@ function draw(ts) {
   // Crank housing drawn here, arm drawn absolutely last so it clears the stage edge
   withAlpha(isEnabled('crank') ? 1 : DIM, drawCrankHousing);
   withAlpha(isEnabled('crank') ? 1 : DIM, drawCrankArm);
+
+  drawEmotionParticles();
+  drawCueCards(ts);
 
   requestAnimationFrame(draw);
 }
@@ -775,6 +1560,9 @@ canvas.addEventListener('mousemove', e => {
     (isEnabled('scene') && inCircle(x,y,SCENE_BTN[0],SCENE_BTN[1]))
   ) ? 'pointer' : 'default';
 });
+
+document.addEventListener('keydown', e => { if (e.key === 'Shift') shiftHeld = true; });
+document.addEventListener('keyup',   e => { if (e.key === 'Shift') shiftHeld = false; });
 
 requestAnimationFrame(draw);
 </script>
