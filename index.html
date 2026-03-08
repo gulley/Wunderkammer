@@ -320,215 +320,264 @@ const MOOD_COLORS = {
 
 const CORPUS = [
   // ── GREETING ──
-  { text: 'Well met by moonlight!', cat: 'greeting', tone: 'wild' },
-  { text: 'Friends, Romans, countrymen, lend me your ears!', cat: 'greeting', tone: 'royal' },
-  { text: 'How now, spirit! Whither wander you?', cat: 'greeting', tone: 'wild' },
-  { text: 'This cell is my court. Welcome, sir.', cat: 'greeting', tone: 'royal' },
-  { text: 'You tremble and look pale.', cat: 'greeting', tone: 'gentle' },
-  { text: 'Angels and ministers of grace defend us!', cat: 'greeting', tone: 'dark' },
-  { text: 'Who goes there?', cat: 'greeting', tone: 'dark' },
-  { text: 'Why do you keep alone?', cat: 'greeting', tone: 'gentle' },
-  { text: 'How now, you secret, black, and midnight hags!', cat: 'greeting', tone: 'dark' },
-  { text: 'All hail, great master!', cat: 'greeting', tone: 'royal' },
-  { text: 'I do desire we may be better strangers.', cat: 'greeting', tone: 'comic' },
-  { text: 'Who is it that can tell me who I am?', cat: 'greeting', tone: 'dark' },
-  { text: 'How sweet the moonlight sleeps upon this bank!', cat: 'greeting', tone: 'gentle' },
-  { text: 'So foul and fair a day I have not seen.', cat: 'greeting', tone: 'dark' },
-  { text: 'I know thee not, old man.', cat: 'greeting', tone: 'royal' },
-  { text: 'Thou comest in such a questionable shape.', cat: 'greeting', tone: 'dark' },
-  { text: 'Good morrow to you both.', cat: 'greeting', tone: 'gentle' },
-  { text: 'Speak if you can: what are you?', cat: 'greeting', tone: 'dark' },
-  { text: 'How now? Who calls?', cat: 'greeting', tone: 'comic' },
-  { text: 'Hail to thee, thane of Glamis!', cat: 'greeting', tone: 'royal' },
+  { text: 'Well met by moonlight!', cat: 'greeting', tone: 'wild', subj: 'nature' },
+  { text: 'Friends, Romans, countrymen, lend me your ears!', cat: 'greeting', tone: 'royal', subj: 'honor' },
+  { text: 'How now, spirit! Whither wander you?', cat: 'greeting', tone: 'wild', subj: 'fate' },
+  { text: 'This cell is my court. Welcome, sir.', cat: 'greeting', tone: 'royal', subj: 'honor' },
+  { text: 'You tremble and look pale.', cat: 'greeting', tone: 'gentle', subj: 'appearance' },
+  { text: 'Angels and ministers of grace defend us!', cat: 'greeting', tone: 'dark', subj: 'fate' },
+  { text: 'Who goes there?', cat: 'greeting', tone: 'dark', subj: 'self' },
+  { text: 'Why do you keep alone?', cat: 'greeting', tone: 'gentle', subj: 'self' },
+  { text: 'How now, you secret, black, and midnight hags!', cat: 'greeting', tone: 'dark', subj: 'appearance' },
+  { text: 'All hail, great master!', cat: 'greeting', tone: 'royal', subj: 'honor' },
+  { text: 'I do desire we may be better strangers.', cat: 'greeting', tone: 'comic', subj: 'wit' },
+  { text: 'Who is it that can tell me who I am?', cat: 'greeting', tone: 'dark', subj: 'self' },
+  { text: 'How sweet the moonlight sleeps upon this bank!', cat: 'greeting', tone: 'gentle', subj: 'nature' },
+  { text: 'So foul and fair a day I have not seen.', cat: 'greeting', tone: 'dark', subj: 'nature' },
+  { text: 'I know thee not, old man.', cat: 'greeting', tone: 'royal', subj: 'self' },
+  { text: 'Thou comest in such a questionable shape.', cat: 'greeting', tone: 'dark', subj: 'appearance' },
+  { text: 'Good morrow to you both.', cat: 'greeting', tone: 'gentle', subj: 'honor' },
+  { text: 'Speak if you can: what are you?', cat: 'greeting', tone: 'dark', subj: 'self' },
+  { text: 'How now? Who calls?', cat: 'greeting', tone: 'comic', subj: 'self' },
+  { text: 'Hail to thee, thane of Glamis!', cat: 'greeting', tone: 'royal', subj: 'honor' },
   // ── BOAST ──
-  { text: 'I am not what I am.', cat: 'boast', tone: 'dark' },
-  { text: 'I dare do all that may become a man.', cat: 'boast', tone: 'royal' },
-  { text: 'I am a man more sinned against than sinning.', cat: 'boast', tone: 'royal' },
-  { text: 'My crown is in my heart, not on my head.', cat: 'boast', tone: 'royal' },
-  { text: 'I am constant as the northern star.', cat: 'boast', tone: 'royal' },
-  { text: 'I am fire and air; my other elements I give to baser life.', cat: 'boast', tone: 'wild' },
-  { text: 'I bear a charmed life.', cat: 'boast', tone: 'dark' },
-  { text: 'I have immortal longings in me.', cat: 'boast', tone: 'wild' },
-  { text: 'I can call spirits from the vasty deep.', cat: 'boast', tone: 'wild' },
-  { text: 'There is a world elsewhere.', cat: 'boast', tone: 'royal' },
-  { text: 'This royal throne of kings, this sceptred isle!', cat: 'boast', tone: 'royal' },
-  { text: 'I could be bounded in a nutshell and count myself a king of infinite space.', cat: 'boast', tone: 'gentle' },
-  { text: 'My tongue will tell the anger of my heart.', cat: 'boast', tone: 'wild' },
-  { text: 'Cry God for Harry, England, and Saint George!', cat: 'boast', tone: 'royal' },
-  { text: 'I am myself alone.', cat: 'boast', tone: 'dark' },
-  { text: 'The world is my oyster.', cat: 'boast', tone: 'comic' },
-  { text: 'I am not bound to please thee with my answers.', cat: 'boast', tone: 'dark' },
-  { text: 'Some are born great, some achieve greatness.', cat: 'boast', tone: 'comic' },
-  { text: 'I wasted time, and now doth time waste me.', cat: 'boast', tone: 'royal' },
-  { text: 'The empty vessel makes the loudest sound.', cat: 'boast', tone: 'comic' },
+  { text: 'I am not what I am.', cat: 'boast', tone: 'dark', subj: 'self' },
+  { text: 'I dare do all that may become a man.', cat: 'boast', tone: 'royal', subj: 'honor' },
+  { text: 'I am a man more sinned against than sinning.', cat: 'boast', tone: 'royal', subj: 'fate' },
+  { text: 'My crown is in my heart, not on my head.', cat: 'boast', tone: 'royal', subj: 'honor' },
+  { text: 'I am constant as the northern star.', cat: 'boast', tone: 'royal', subj: 'self' },
+  { text: 'I am fire and air; my other elements I give to baser life.', cat: 'boast', tone: 'wild', subj: 'self' },
+  { text: 'I bear a charmed life.', cat: 'boast', tone: 'dark', subj: 'fate' },
+  { text: 'I have immortal longings in me.', cat: 'boast', tone: 'wild', subj: 'death' },
+  { text: 'I can call spirits from the vasty deep.', cat: 'boast', tone: 'wild', subj: 'fate' },
+  { text: 'There is a world elsewhere.', cat: 'boast', tone: 'royal', subj: 'nature' },
+  { text: 'This royal throne of kings, this sceptred isle!', cat: 'boast', tone: 'royal', subj: 'honor' },
+  { text: 'I could be bounded in a nutshell and count myself a king of infinite space.', cat: 'boast', tone: 'gentle', subj: 'wit' },
+  { text: 'My tongue will tell the anger of my heart.', cat: 'boast', tone: 'wild', subj: 'self' },
+  { text: 'Cry God for Harry, England, and Saint George!', cat: 'boast', tone: 'royal', subj: 'honor' },
+  { text: 'I am myself alone.', cat: 'boast', tone: 'dark', subj: 'self' },
+  { text: 'The world is my oyster.', cat: 'boast', tone: 'comic', subj: 'wit' },
+  { text: 'I am not bound to please thee with my answers.', cat: 'boast', tone: 'dark', subj: 'wit' },
+  { text: 'Some are born great, some achieve greatness.', cat: 'boast', tone: 'comic', subj: 'fate' },
+  { text: 'I wasted time, and now doth time waste me.', cat: 'boast', tone: 'royal', subj: 'fate' },
+  { text: 'The empty vessel makes the loudest sound.', cat: 'boast', tone: 'comic', subj: 'wit' },
   // ── CHALLENGE ──
-  { text: 'Thou art a villain!', cat: 'challenge', tone: 'dark' },
-  { text: 'Lay on, Macduff!', cat: 'challenge', tone: 'dark' },
-  { text: 'Come not between the dragon and his wrath.', cat: 'challenge', tone: 'royal' },
-  { text: 'I defy you, stars!', cat: 'challenge', tone: 'wild' },
-  { text: 'Tempt not a desperate man.', cat: 'challenge', tone: 'dark' },
-  { text: 'Stand and unfold yourself.', cat: 'challenge', tone: 'dark' },
-  { text: 'Once more unto the breach, dear friends!', cat: 'challenge', tone: 'royal' },
-  { text: 'O, beware, my lord, of jealousy!', cat: 'challenge', tone: 'dark' },
-  { text: 'Let me be cruel, not unnatural.', cat: 'challenge', tone: 'dark' },
-  { text: 'If you prick us, do we not bleed?', cat: 'challenge', tone: 'gentle' },
-  { text: 'Et tu, Brute?', cat: 'challenge', tone: 'royal' },
-  { text: 'We few, we happy few, we band of brothers!', cat: 'challenge', tone: 'royal' },
-  { text: 'Blow, winds, and crack your cheeks! Rage, blow!', cat: 'challenge', tone: 'wild' },
-  { text: 'Now, gods, stand up for bastards!', cat: 'challenge', tone: 'wild' },
-  { text: 'Speak, hands, for me!', cat: 'challenge', tone: 'dark' },
-  { text: 'Is this a dagger which I see before me?', cat: 'challenge', tone: 'dark' },
-  { text: 'Have at thee, coward!', cat: 'challenge', tone: 'wild' },
-  { text: 'Come, fate, into the lists, and champion me!', cat: 'challenge', tone: 'dark' },
-  { text: 'Out of my sight! Thou dost infect mine eyes.', cat: 'challenge', tone: 'dark' },
-  { text: 'Stiffen the sinews, summon up the blood!', cat: 'challenge', tone: 'royal' },
+  { text: 'Thou art a villain!', cat: 'challenge', tone: 'dark', subj: 'self' },
+  { text: 'Lay on, Macduff!', cat: 'challenge', tone: 'dark', subj: 'death' },
+  { text: 'Come not between the dragon and his wrath.', cat: 'challenge', tone: 'royal', subj: 'honor' },
+  { text: 'I defy you, stars!', cat: 'challenge', tone: 'wild', subj: 'fate' },
+  { text: 'Tempt not a desperate man.', cat: 'challenge', tone: 'dark', subj: 'self' },
+  { text: 'Stand and unfold yourself.', cat: 'challenge', tone: 'dark', subj: 'self' },
+  { text: 'Once more unto the breach, dear friends!', cat: 'challenge', tone: 'royal', subj: 'honor' },
+  { text: 'O, beware, my lord, of jealousy!', cat: 'challenge', tone: 'dark', subj: 'love' },
+  { text: 'Let me be cruel, not unnatural.', cat: 'challenge', tone: 'dark', subj: 'self' },
+  { text: 'If you prick us, do we not bleed?', cat: 'challenge', tone: 'gentle', subj: 'self' },
+  { text: 'Et tu, Brute?', cat: 'challenge', tone: 'royal', subj: 'honor' },
+  { text: 'We few, we happy few, we band of brothers!', cat: 'challenge', tone: 'royal', subj: 'honor' },
+  { text: 'Blow, winds, and crack your cheeks! Rage, blow!', cat: 'challenge', tone: 'wild', subj: 'nature' },
+  { text: 'Now, gods, stand up for bastards!', cat: 'challenge', tone: 'wild', subj: 'fate' },
+  { text: 'Speak, hands, for me!', cat: 'challenge', tone: 'dark', subj: 'death' },
+  { text: 'Is this a dagger which I see before me?', cat: 'challenge', tone: 'dark', subj: 'death' },
+  { text: 'Have at thee, coward!', cat: 'challenge', tone: 'wild', subj: 'honor' },
+  { text: 'Come, fate, into the lists, and champion me!', cat: 'challenge', tone: 'dark', subj: 'fate' },
+  { text: 'Out of my sight! Thou dost infect mine eyes.', cat: 'challenge', tone: 'dark', subj: 'appearance' },
+  { text: 'Stiffen the sinews, summon up the blood!', cat: 'challenge', tone: 'royal', subj: 'honor' },
   // ── DEVOTION ──
-  { text: 'But soft, what light through yonder window breaks?', cat: 'devotion', tone: 'gentle' },
-  { text: 'My bounty is as boundless as the sea, my love as deep.', cat: 'devotion', tone: 'gentle' },
-  { text: 'I would not wish any companion in the world but you.', cat: 'devotion', tone: 'gentle' },
-  { text: 'Doubt thou the stars are fire, but never doubt I love.', cat: 'devotion', tone: 'royal' },
-  { text: 'Shall I compare thee to a summer\'s day?', cat: 'devotion', tone: 'gentle' },
-  { text: 'Love looks not with the eyes, but with the mind.', cat: 'devotion', tone: 'gentle' },
-  { text: 'The course of true love never did run smooth.', cat: 'devotion', tone: 'gentle' },
-  { text: 'Who ever loved that loved not at first sight?', cat: 'devotion', tone: 'comic' },
-  { text: 'Hear my soul speak. The very instant that I saw you, did my heart fly to your service.', cat: 'devotion', tone: 'gentle' },
-  { text: 'I do love nothing in the world so well as you.', cat: 'devotion', tone: 'gentle' },
-  { text: 'My heart is ever at your service.', cat: 'devotion', tone: 'gentle' },
-  { text: 'You have witchcraft in your lips.', cat: 'devotion', tone: 'royal' },
-  { text: 'Come what sorrow can, it cannot countervail the exchange of joy.', cat: 'devotion', tone: 'gentle' },
-  { text: 'Love all, trust a few, do wrong to none.', cat: 'devotion', tone: 'gentle' },
-  { text: 'I pray you, do not fall in love with me, for I am falser than vows made in wine.', cat: 'devotion', tone: 'comic' },
-  { text: 'If music be the food of love, play on.', cat: 'devotion', tone: 'gentle' },
-  { text: 'Journeys end in lovers meeting.', cat: 'devotion', tone: 'gentle' },
-  { text: 'Take, O take those lips away.', cat: 'devotion', tone: 'gentle' },
-  { text: 'She loved me for the dangers I had passed, and I loved her that she did pity them.', cat: 'devotion', tone: 'royal' },
-  { text: 'So they loved, as love in twain had the essence but in one.', cat: 'devotion', tone: 'gentle' },
+  { text: 'But soft, what light through yonder window breaks?', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'My bounty is as boundless as the sea, my love as deep.', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'I would not wish any companion in the world but you.', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'Doubt thou the stars are fire, but never doubt I love.', cat: 'devotion', tone: 'royal', subj: 'love' },
+  { text: 'Shall I compare thee to a summer\'s day?', cat: 'devotion', tone: 'gentle', subj: 'appearance' },
+  { text: 'Love looks not with the eyes, but with the mind.', cat: 'devotion', tone: 'gentle', subj: 'wit' },
+  { text: 'The course of true love never did run smooth.', cat: 'devotion', tone: 'gentle', subj: 'fate' },
+  { text: 'Who ever loved that loved not at first sight?', cat: 'devotion', tone: 'comic', subj: 'love' },
+  { text: 'Hear my soul speak. The very instant that I saw you, did my heart fly to your service.', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'I do love nothing in the world so well as you.', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'My heart is ever at your service.', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'You have witchcraft in your lips.', cat: 'devotion', tone: 'royal', subj: 'appearance' },
+  { text: 'Come what sorrow can, it cannot countervail the exchange of joy.', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'Love all, trust a few, do wrong to none.', cat: 'devotion', tone: 'gentle', subj: 'wit' },
+  { text: 'I pray you, do not fall in love with me, for I am falser than vows made in wine.', cat: 'devotion', tone: 'comic', subj: 'love' },
+  { text: 'If music be the food of love, play on.', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'Journeys end in lovers meeting.', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'Take, O take those lips away.', cat: 'devotion', tone: 'gentle', subj: 'love' },
+  { text: 'She loved me for the dangers I had passed, and I loved her that she did pity them.', cat: 'devotion', tone: 'royal', subj: 'love' },
+  { text: 'So they loved, as love in twain had the essence but in one.', cat: 'devotion', tone: 'gentle', subj: 'love' },
   // ── INSULT ──
-  { text: 'More of your conversation would infect my brain.', cat: 'insult', tone: 'royal' },
-  { text: 'Thou art a boil, a plague sore!', cat: 'insult', tone: 'wild' },
-  { text: 'Thou lump of foul deformity!', cat: 'insult', tone: 'wild' },
-  { text: 'Away, you three-inch fool!', cat: 'insult', tone: 'comic' },
-  { text: 'You are not worth the dust which the rude wind blows in your face.', cat: 'insult', tone: 'royal' },
-  { text: 'Thou clay-brained guts, thou knotty-pated fool!', cat: 'insult', tone: 'comic' },
-  { text: 'I am sick when I do look on thee.', cat: 'insult', tone: 'dark' },
-  { text: 'Would thou wert clean enough to spit upon!', cat: 'insult', tone: 'dark' },
-  { text: 'Thou unfit for any place but hell!', cat: 'insult', tone: 'dark' },
-  { text: 'You scullion! You rampallian!', cat: 'insult', tone: 'comic' },
-  { text: 'Thy tongue outvenoms all the worms of Nile.', cat: 'insult', tone: 'dark' },
-  { text: 'Thou art like a toad: ugly and venomous.', cat: 'insult', tone: 'dark' },
-  { text: 'You blocks, you stones, you worse than senseless things!', cat: 'insult', tone: 'royal' },
-  { text: 'Thou hast no more brain than I have in mine elbows.', cat: 'insult', tone: 'comic' },
-  { text: 'The tartness of his face sours ripe grapes.', cat: 'insult', tone: 'comic' },
-  { text: 'Your brain is as dry as the remainder biscuit after a voyage.', cat: 'insult', tone: 'comic' },
-  { text: 'Villain, I have done thy mother.', cat: 'insult', tone: 'wild' },
-  { text: 'I do wish thou wert a dog, that I might love thee something.', cat: 'insult', tone: 'comic' },
-  { text: 'Methinks thou art a general offence, and every man should beat thee.', cat: 'insult', tone: 'comic' },
-  { text: 'Thou whoreson, senseless villain!', cat: 'insult', tone: 'wild' },
+  { text: 'More of your conversation would infect my brain.', cat: 'insult', tone: 'royal', subj: 'wit' },
+  { text: 'Thou art a boil, a plague sore!', cat: 'insult', tone: 'wild', subj: 'appearance' },
+  { text: 'Thou lump of foul deformity!', cat: 'insult', tone: 'wild', subj: 'appearance' },
+  { text: 'Away, you three-inch fool!', cat: 'insult', tone: 'comic', subj: 'appearance' },
+  { text: 'You are not worth the dust which the rude wind blows in your face.', cat: 'insult', tone: 'royal', subj: 'honor' },
+  { text: 'Thou clay-brained guts, thou knotty-pated fool!', cat: 'insult', tone: 'comic', subj: 'wit' },
+  { text: 'I am sick when I do look on thee.', cat: 'insult', tone: 'dark', subj: 'appearance' },
+  { text: 'Would thou wert clean enough to spit upon!', cat: 'insult', tone: 'dark', subj: 'appearance' },
+  { text: 'Thou unfit for any place but hell!', cat: 'insult', tone: 'dark', subj: 'fate' },
+  { text: 'You scullion! You rampallian!', cat: 'insult', tone: 'comic', subj: 'self' },
+  { text: 'Thy tongue outvenoms all the worms of Nile.', cat: 'insult', tone: 'dark', subj: 'wit' },
+  { text: 'Thou art like a toad: ugly and venomous.', cat: 'insult', tone: 'dark', subj: 'appearance' },
+  { text: 'You blocks, you stones, you worse than senseless things!', cat: 'insult', tone: 'royal', subj: 'wit' },
+  { text: 'Thou hast no more brain than I have in mine elbows.', cat: 'insult', tone: 'comic', subj: 'wit' },
+  { text: 'The tartness of his face sours ripe grapes.', cat: 'insult', tone: 'comic', subj: 'appearance' },
+  { text: 'Your brain is as dry as the remainder biscuit after a voyage.', cat: 'insult', tone: 'comic', subj: 'wit' },
+  { text: 'Villain, I have done thy mother.', cat: 'insult', tone: 'wild', subj: 'honor' },
+  { text: 'I do wish thou wert a dog, that I might love thee something.', cat: 'insult', tone: 'comic', subj: 'love' },
+  { text: 'Methinks thou art a general offence, and every man should beat thee.', cat: 'insult', tone: 'comic', subj: 'self' },
+  { text: 'Thou whoreson, senseless villain!', cat: 'insult', tone: 'wild', subj: 'self' },
   // ── DESPAIR ──
-  { text: 'O, what a fall was there!', cat: 'despair', tone: 'royal' },
-  { text: 'To be, or not to be: that is the question.', cat: 'despair', tone: 'royal' },
-  { text: 'Out, out, brief candle!', cat: 'despair', tone: 'dark' },
-  { text: 'All is but toys. Renown and grace is dead.', cat: 'despair', tone: 'dark' },
-  { text: 'O, that this too, too solid flesh would melt.', cat: 'despair', tone: 'dark' },
-  { text: 'How sharper than a serpent\'s tooth it is to have a thankless child.', cat: 'despair', tone: 'royal' },
-  { text: 'My desolation does begin to make a better life.', cat: 'despair', tone: 'royal' },
-  { text: 'Men must endure their going hence, even as their coming hither.', cat: 'despair', tone: 'gentle' },
-  { text: 'When sorrows come, they come not single spies, but in battalions.', cat: 'despair', tone: 'royal' },
-  { text: 'O, I am fortune\'s fool!', cat: 'despair', tone: 'wild' },
-  { text: 'Grief fills the room up of my absent child.', cat: 'despair', tone: 'gentle' },
-  { text: 'The weight of this sad time we must obey.', cat: 'despair', tone: 'gentle' },
-  { text: 'My way of life is fallen into the sere, the yellow leaf.', cat: 'despair', tone: 'dark' },
-  { text: 'Howl, howl, howl! O, you are men of stones!', cat: 'despair', tone: 'wild' },
-  { text: 'Here I stand, a poor, infirm, weak, and despised old man.', cat: 'despair', tone: 'royal' },
-  { text: 'What\'s gone and what\'s past help should be past grief.', cat: 'despair', tone: 'gentle' },
-  { text: 'O, what a rogue and peasant slave am I!', cat: 'despair', tone: 'dark' },
-  { text: 'Nothing will come of nothing.', cat: 'despair', tone: 'royal' },
-  { text: 'I am a very foolish fond old man.', cat: 'despair', tone: 'gentle' },
-  { text: 'Things without all remedy should be without regard.', cat: 'despair', tone: 'dark' },
+  { text: 'O, what a fall was there!', cat: 'despair', tone: 'royal', subj: 'fate' },
+  { text: 'To be, or not to be: that is the question.', cat: 'despair', tone: 'royal', subj: 'death' },
+  { text: 'Out, out, brief candle!', cat: 'despair', tone: 'dark', subj: 'death' },
+  { text: 'All is but toys. Renown and grace is dead.', cat: 'despair', tone: 'dark', subj: 'honor' },
+  { text: 'O, that this too, too solid flesh would melt.', cat: 'despair', tone: 'dark', subj: 'death' },
+  { text: 'How sharper than a serpent\'s tooth it is to have a thankless child.', cat: 'despair', tone: 'royal', subj: 'love' },
+  { text: 'My desolation does begin to make a better life.', cat: 'despair', tone: 'royal', subj: 'fate' },
+  { text: 'Men must endure their going hence, even as their coming hither.', cat: 'despair', tone: 'gentle', subj: 'death' },
+  { text: 'When sorrows come, they come not single spies, but in battalions.', cat: 'despair', tone: 'royal', subj: 'fate' },
+  { text: 'O, I am fortune\'s fool!', cat: 'despair', tone: 'wild', subj: 'fate' },
+  { text: 'Grief fills the room up of my absent child.', cat: 'despair', tone: 'gentle', subj: 'love' },
+  { text: 'The weight of this sad time we must obey.', cat: 'despair', tone: 'gentle', subj: 'fate' },
+  { text: 'My way of life is fallen into the sere, the yellow leaf.', cat: 'despair', tone: 'dark', subj: 'nature' },
+  { text: 'Howl, howl, howl! O, you are men of stones!', cat: 'despair', tone: 'wild', subj: 'death' },
+  { text: 'Here I stand, a poor, infirm, weak, and despised old man.', cat: 'despair', tone: 'royal', subj: 'self' },
+  { text: 'What\'s gone and what\'s past help should be past grief.', cat: 'despair', tone: 'gentle', subj: 'fate' },
+  { text: 'O, what a rogue and peasant slave am I!', cat: 'despair', tone: 'dark', subj: 'self' },
+  { text: 'Nothing will come of nothing.', cat: 'despair', tone: 'royal', subj: 'fate' },
+  { text: 'I am a very foolish fond old man.', cat: 'despair', tone: 'gentle', subj: 'self' },
+  { text: 'Things without all remedy should be without regard.', cat: 'despair', tone: 'dark', subj: 'fate' },
   // ── MADNESS ──
-  { text: 'I am but mad north-north-west.', cat: 'madness', tone: 'comic' },
-  { text: 'O, let me not be mad, not mad, sweet heaven!', cat: 'madness', tone: 'royal' },
-  { text: 'Though this be madness, yet there is method in\'t.', cat: 'madness', tone: 'comic' },
-  { text: 'Lord, what fools these mortals be!', cat: 'madness', tone: 'comic' },
-  { text: 'The lunatic, the lover, and the poet are of imagination all compact.', cat: 'madness', tone: 'gentle' },
-  { text: 'I am not mad; I would to heaven I were!', cat: 'madness', tone: 'dark' },
-  { text: 'What a piece of work is man!', cat: 'madness', tone: 'dark' },
-  { text: 'Full of scorpions is my mind!', cat: 'madness', tone: 'dark' },
-  { text: 'Why, this is very midsummer madness!', cat: 'madness', tone: 'comic' },
-  { text: 'My wits begin to turn.', cat: 'madness', tone: 'dark' },
-  { text: 'Double, double, toil and trouble!', cat: 'madness', tone: 'wild' },
-  { text: 'That way madness lies; let me shun that.', cat: 'madness', tone: 'gentle' },
-  { text: 'A tale told by an idiot, full of sound and fury, signifying nothing.', cat: 'madness', tone: 'dark' },
-  { text: 'Canst thou not minister to a mind diseased?', cat: 'madness', tone: 'dark' },
-  { text: 'There are more things in heaven and earth than are dreamt of in your philosophy.', cat: 'madness', tone: 'gentle' },
-  { text: 'The earth has bubbles, as the water has.', cat: 'madness', tone: 'gentle' },
-  { text: 'Come, seeling night, scarf up the tender eye of pitiful day.', cat: 'madness', tone: 'dark' },
-  { text: 'Are you a god? Would you create me new?', cat: 'madness', tone: 'wild' },
-  { text: 'He is far gone, far gone.', cat: 'madness', tone: 'gentle' },
-  { text: 'Haste me to know it, that I may sweep to my revenge.', cat: 'madness', tone: 'dark' },
+  { text: 'I am but mad north-north-west.', cat: 'madness', tone: 'comic', subj: 'self' },
+  { text: 'O, let me not be mad, not mad, sweet heaven!', cat: 'madness', tone: 'royal', subj: 'self' },
+  { text: 'Though this be madness, yet there is method in\'t.', cat: 'madness', tone: 'comic', subj: 'wit' },
+  { text: 'Lord, what fools these mortals be!', cat: 'madness', tone: 'comic', subj: 'wit' },
+  { text: 'The lunatic, the lover, and the poet are of imagination all compact.', cat: 'madness', tone: 'gentle', subj: 'love' },
+  { text: 'I am not mad; I would to heaven I were!', cat: 'madness', tone: 'dark', subj: 'self' },
+  { text: 'What a piece of work is man!', cat: 'madness', tone: 'dark', subj: 'self' },
+  { text: 'Full of scorpions is my mind!', cat: 'madness', tone: 'dark', subj: 'self' },
+  { text: 'Why, this is very midsummer madness!', cat: 'madness', tone: 'comic', subj: 'wit' },
+  { text: 'My wits begin to turn.', cat: 'madness', tone: 'dark', subj: 'self' },
+  { text: 'Double, double, toil and trouble!', cat: 'madness', tone: 'wild', subj: 'fate' },
+  { text: 'That way madness lies; let me shun that.', cat: 'madness', tone: 'gentle', subj: 'self' },
+  { text: 'A tale told by an idiot, full of sound and fury, signifying nothing.', cat: 'madness', tone: 'dark', subj: 'fate' },
+  { text: 'Canst thou not minister to a mind diseased?', cat: 'madness', tone: 'dark', subj: 'self' },
+  { text: 'There are more things in heaven and earth than are dreamt of in your philosophy.', cat: 'madness', tone: 'gentle', subj: 'fate' },
+  { text: 'The earth has bubbles, as the water has.', cat: 'madness', tone: 'gentle', subj: 'nature' },
+  { text: 'Come, seeling night, scarf up the tender eye of pitiful day.', cat: 'madness', tone: 'dark', subj: 'nature' },
+  { text: 'Are you a god? Would you create me new?', cat: 'madness', tone: 'wild', subj: 'fate' },
+  { text: 'He is far gone, far gone.', cat: 'madness', tone: 'gentle', subj: 'self' },
+  { text: 'Haste me to know it, that I may sweep to my revenge.', cat: 'madness', tone: 'dark', subj: 'death' },
   // ── PROPHECY ──
-  { text: 'We are such stuff as dreams are made on.', cat: 'prophecy', tone: 'gentle' },
-  { text: 'Beware the ides of March.', cat: 'prophecy', tone: 'dark' },
-  { text: 'By the pricking of my thumbs, something wicked this way comes.', cat: 'prophecy', tone: 'dark' },
-  { text: 'There is a tide in the affairs of men.', cat: 'prophecy', tone: 'royal' },
-  { text: 'All that glisters is not gold.', cat: 'prophecy', tone: 'gentle' },
-  { text: 'The better part of valour is discretion.', cat: 'prophecy', tone: 'comic' },
-  { text: 'This above all: to thine own self be true.', cat: 'prophecy', tone: 'gentle' },
-  { text: 'The fault, dear Brutus, is not in our stars, but in ourselves.', cat: 'prophecy', tone: 'royal' },
-  { text: 'Uneasy lies the head that wears a crown.', cat: 'prophecy', tone: 'royal' },
-  { text: 'What\'s done is done.', cat: 'prophecy', tone: 'dark' },
-  { text: 'The wheel is come full circle.', cat: 'prophecy', tone: 'dark' },
-  { text: 'There is nothing either good or bad, but thinking makes it so.', cat: 'prophecy', tone: 'gentle' },
-  { text: 'Brevity is the soul of wit.', cat: 'prophecy', tone: 'comic' },
-  { text: 'The lady doth protest too much, methinks.', cat: 'prophecy', tone: 'comic' },
-  { text: 'Something is rotten in the state of Denmark.', cat: 'prophecy', tone: 'dark' },
-  { text: 'What\'s in a name? A rose by any other name would smell as sweet.', cat: 'prophecy', tone: 'gentle' },
-  { text: 'Fair is foul, and foul is fair.', cat: 'prophecy', tone: 'dark' },
-  { text: 'What\'s past is prologue.', cat: 'prophecy', tone: 'royal' },
-  { text: 'All the world\'s a stage.', cat: 'prophecy', tone: 'gentle' },
-  { text: 'Misery acquaints a man with strange bedfellows.', cat: 'prophecy', tone: 'comic' },
+  { text: 'We are such stuff as dreams are made on.', cat: 'prophecy', tone: 'gentle', subj: 'fate' },
+  { text: 'Beware the ides of March.', cat: 'prophecy', tone: 'dark', subj: 'death' },
+  { text: 'By the pricking of my thumbs, something wicked this way comes.', cat: 'prophecy', tone: 'dark', subj: 'fate' },
+  { text: 'There is a tide in the affairs of men.', cat: 'prophecy', tone: 'royal', subj: 'fate' },
+  { text: 'All that glisters is not gold.', cat: 'prophecy', tone: 'gentle', subj: 'appearance' },
+  { text: 'The better part of valour is discretion.', cat: 'prophecy', tone: 'comic', subj: 'honor' },
+  { text: 'This above all: to thine own self be true.', cat: 'prophecy', tone: 'gentle', subj: 'self' },
+  { text: 'The fault, dear Brutus, is not in our stars, but in ourselves.', cat: 'prophecy', tone: 'royal', subj: 'fate' },
+  { text: 'Uneasy lies the head that wears a crown.', cat: 'prophecy', tone: 'royal', subj: 'honor' },
+  { text: 'What\'s done is done.', cat: 'prophecy', tone: 'dark', subj: 'fate' },
+  { text: 'The wheel is come full circle.', cat: 'prophecy', tone: 'dark', subj: 'fate' },
+  { text: 'There is nothing either good or bad, but thinking makes it so.', cat: 'prophecy', tone: 'gentle', subj: 'wit' },
+  { text: 'Brevity is the soul of wit.', cat: 'prophecy', tone: 'comic', subj: 'wit' },
+  { text: 'The lady doth protest too much, methinks.', cat: 'prophecy', tone: 'comic', subj: 'love' },
+  { text: 'Something is rotten in the state of Denmark.', cat: 'prophecy', tone: 'dark', subj: 'honor' },
+  { text: 'What\'s in a name? A rose by any other name would smell as sweet.', cat: 'prophecy', tone: 'gentle', subj: 'love' },
+  { text: 'Fair is foul, and foul is fair.', cat: 'prophecy', tone: 'dark', subj: 'appearance' },
+  { text: 'What\'s past is prologue.', cat: 'prophecy', tone: 'royal', subj: 'fate' },
+  { text: 'All the world\'s a stage.', cat: 'prophecy', tone: 'gentle', subj: 'fate' },
+  { text: 'Misery acquaints a man with strange bedfellows.', cat: 'prophecy', tone: 'comic', subj: 'wit' },
   // ── TRIUMPH ──
-  { text: 'Now is the winter of our discontent made glorious summer!', cat: 'triumph', tone: 'dark' },
-  { text: 'The game\'s afoot! Follow your spirit!', cat: 'triumph', tone: 'royal' },
-  { text: 'Joy, gentle friends! Joy and fresh days of love!', cat: 'triumph', tone: 'gentle' },
-  { text: 'O wonderful, wonderful, and most wonderful!', cat: 'triumph', tone: 'comic' },
-  { text: 'How beauteous mankind is! O brave new world!', cat: 'triumph', tone: 'gentle' },
-  { text: 'Be not afraid of greatness!', cat: 'triumph', tone: 'comic' },
-  { text: 'I have done the state some service, and they know\'t.', cat: 'triumph', tone: 'royal' },
-  { text: 'Our revels now are ended.', cat: 'triumph', tone: 'gentle' },
-  { text: 'The bright day is done, and we are for the dark.', cat: 'triumph', tone: 'dark' },
-  { text: 'This was the noblest Roman of them all.', cat: 'triumph', tone: 'royal' },
-  { text: 'All\'s well that ends well.', cat: 'triumph', tone: 'gentle' },
-  { text: 'We have heard the chimes at midnight.', cat: 'triumph', tone: 'comic' },
-  { text: 'If we shadows have offended, think but this and all is mended.', cat: 'triumph', tone: 'gentle' },
-  { text: 'Strong reasons make strong actions.', cat: 'triumph', tone: 'royal' },
-  { text: 'With mirth and laughter let old wrinkles come.', cat: 'triumph', tone: 'comic' },
-  { text: 'There is a history in all men\'s lives.', cat: 'triumph', tone: 'royal' },
-  { text: 'O day and night, but this is wondrous strange!', cat: 'triumph', tone: 'gentle' },
-  { text: 'A hit, a very palpable hit!', cat: 'triumph', tone: 'comic' },
-  { text: 'I have set my life upon a cast, and I will stand the hazard of the die!', cat: 'triumph', tone: 'dark' },
-  { text: 'Suit the action to the word, the word to the action.', cat: 'triumph', tone: 'gentle' },
+  { text: 'Now is the winter of our discontent made glorious summer!', cat: 'triumph', tone: 'dark', subj: 'nature' },
+  { text: 'The game\'s afoot! Follow your spirit!', cat: 'triumph', tone: 'royal', subj: 'honor' },
+  { text: 'Joy, gentle friends! Joy and fresh days of love!', cat: 'triumph', tone: 'gentle', subj: 'love' },
+  { text: 'O wonderful, wonderful, and most wonderful!', cat: 'triumph', tone: 'comic', subj: 'wit' },
+  { text: 'How beauteous mankind is! O brave new world!', cat: 'triumph', tone: 'gentle', subj: 'nature' },
+  { text: 'Be not afraid of greatness!', cat: 'triumph', tone: 'comic', subj: 'fate' },
+  { text: 'I have done the state some service, and they know\'t.', cat: 'triumph', tone: 'royal', subj: 'honor' },
+  { text: 'Our revels now are ended.', cat: 'triumph', tone: 'gentle', subj: 'fate' },
+  { text: 'The bright day is done, and we are for the dark.', cat: 'triumph', tone: 'dark', subj: 'death' },
+  { text: 'This was the noblest Roman of them all.', cat: 'triumph', tone: 'royal', subj: 'honor' },
+  { text: 'All\'s well that ends well.', cat: 'triumph', tone: 'gentle', subj: 'fate' },
+  { text: 'We have heard the chimes at midnight.', cat: 'triumph', tone: 'comic', subj: 'nature' },
+  { text: 'If we shadows have offended, think but this and all is mended.', cat: 'triumph', tone: 'gentle', subj: 'wit' },
+  { text: 'Strong reasons make strong actions.', cat: 'triumph', tone: 'royal', subj: 'honor' },
+  { text: 'With mirth and laughter let old wrinkles come.', cat: 'triumph', tone: 'comic', subj: 'love' },
+  { text: 'There is a history in all men\'s lives.', cat: 'triumph', tone: 'royal', subj: 'fate' },
+  { text: 'O day and night, but this is wondrous strange!', cat: 'triumph', tone: 'gentle', subj: 'nature' },
+  { text: 'A hit, a very palpable hit!', cat: 'triumph', tone: 'comic', subj: 'wit' },
+  { text: 'I have set my life upon a cast, and I will stand the hazard of the die!', cat: 'triumph', tone: 'dark', subj: 'fate' },
+  { text: 'Suit the action to the word, the word to the action.', cat: 'triumph', tone: 'gentle', subj: 'wit' },
   // ── FAREWELL ──
-  { text: 'The rest is silence.', cat: 'farewell', tone: 'dark' },
-  { text: 'Good night, good night! Parting is such sweet sorrow.', cat: 'farewell', tone: 'gentle' },
-  { text: 'Good night, sweet prince, and flights of angels sing thee to thy rest.', cat: 'farewell', tone: 'gentle' },
-  { text: 'If we do meet again, why, we shall smile.', cat: 'farewell', tone: 'royal' },
-  { text: 'Farewell! Thou art too dear for my possessing.', cat: 'farewell', tone: 'gentle' },
-  { text: 'I have a journey, sir, shortly to go. My master calls me.', cat: 'farewell', tone: 'gentle' },
-  { text: 'Thus with a kiss I die.', cat: 'farewell', tone: 'gentle' },
-  { text: 'Adieu, adieu, adieu! Remember me.', cat: 'farewell', tone: 'dark' },
-  { text: 'The undiscovered country from whose bourn no traveller returns.', cat: 'farewell', tone: 'dark' },
-  { text: 'We shall not look upon his like again.', cat: 'farewell', tone: 'royal' },
-  { text: 'Farewell, a long farewell, to all my greatness!', cat: 'farewell', tone: 'royal' },
-  { text: 'I am dying, Egypt, dying.', cat: 'farewell', tone: 'royal' },
-  { text: 'Every third thought shall be my grave.', cat: 'farewell', tone: 'dark' },
-  { text: 'The long day\'s task is done, and we must sleep.', cat: 'farewell', tone: 'gentle' },
-  { text: 'Now my charms are all o\'erthrown.', cat: 'farewell', tone: 'gentle' },
-  { text: 'Ripeness is all.', cat: 'farewell', tone: 'gentle' },
-  { text: 'Give me your hands, if we be friends.', cat: 'farewell', tone: 'gentle' },
-  { text: 'As flies to wanton boys are we to the gods.', cat: 'farewell', tone: 'dark' },
-  { text: 'Let us not burden our remembrances with a heaviness that\'s gone.', cat: 'farewell', tone: 'gentle' },
-  { text: 'Come, let us away. We two alone will sing like birds in the cage.', cat: 'farewell', tone: 'gentle' },
+  { text: 'The rest is silence.', cat: 'farewell', tone: 'dark', subj: 'death' },
+  { text: 'Good night, good night! Parting is such sweet sorrow.', cat: 'farewell', tone: 'gentle', subj: 'love' },
+  { text: 'Good night, sweet prince, and flights of angels sing thee to thy rest.', cat: 'farewell', tone: 'gentle', subj: 'death' },
+  { text: 'If we do meet again, why, we shall smile.', cat: 'farewell', tone: 'royal', subj: 'fate' },
+  { text: 'Farewell! Thou art too dear for my possessing.', cat: 'farewell', tone: 'gentle', subj: 'love' },
+  { text: 'I have a journey, sir, shortly to go. My master calls me.', cat: 'farewell', tone: 'gentle', subj: 'death' },
+  { text: 'Thus with a kiss I die.', cat: 'farewell', tone: 'gentle', subj: 'love' },
+  { text: 'Adieu, adieu, adieu! Remember me.', cat: 'farewell', tone: 'dark', subj: 'self' },
+  { text: 'The undiscovered country from whose bourn no traveller returns.', cat: 'farewell', tone: 'dark', subj: 'death' },
+  { text: 'We shall not look upon his like again.', cat: 'farewell', tone: 'royal', subj: 'honor' },
+  { text: 'Farewell, a long farewell, to all my greatness!', cat: 'farewell', tone: 'royal', subj: 'honor' },
+  { text: 'I am dying, Egypt, dying.', cat: 'farewell', tone: 'royal', subj: 'death' },
+  { text: 'Every third thought shall be my grave.', cat: 'farewell', tone: 'dark', subj: 'death' },
+  { text: 'The long day\'s task is done, and we must sleep.', cat: 'farewell', tone: 'gentle', subj: 'death' },
+  { text: 'Now my charms are all o\'erthrown.', cat: 'farewell', tone: 'gentle', subj: 'fate' },
+  { text: 'Ripeness is all.', cat: 'farewell', tone: 'gentle', subj: 'fate' },
+  { text: 'Give me your hands, if we be friends.', cat: 'farewell', tone: 'gentle', subj: 'love' },
+  { text: 'As flies to wanton boys are we to the gods.', cat: 'farewell', tone: 'dark', subj: 'fate' },
+  { text: 'Let us not burden our remembrances with a heaviness that\'s gone.', cat: 'farewell', tone: 'gentle', subj: 'fate' },
+  { text: 'Come, let us away. We two alone will sing like birds in the cage.', cat: 'farewell', tone: 'gentle', subj: 'love' },
+];
+
+// Call-and-response pairs: call goes to one speaker, reply to the other
+const COUPLETS = [
+  // Humor: earnest meets deflection
+  { call: 'Shall I compare thee to a summer\'s day?', reply: 'Thou art a boil, a plague sore!', cats: ['devotion','insult'] },
+  { call: 'I do love nothing in the world so well as you.', reply: 'I do desire we may be better strangers.', cats: ['devotion','insult'] },
+  { call: 'My heart is ever at your service.', reply: 'More of your conversation would infect my brain.', cats: ['devotion','insult'] },
+  { call: 'But soft, what light through yonder window breaks?', reply: 'Away, you three-inch fool!', cats: ['devotion','insult'] },
+  { call: 'I have immortal longings in me.', reply: 'The empty vessel makes the loudest sound.', cats: ['boast','insult'] },
+  { call: 'I am constant as the northern star.', reply: 'I am but mad north-north-west.', cats: ['boast','madness'] },
+  // Humor: boast meets puncture
+  { call: 'I can call spirits from the vasty deep.', reply: 'Brevity is the soul of wit.', cats: ['boast','prophecy'] },
+  { call: 'I bear a charmed life.', reply: 'The lady doth protest too much, methinks.', cats: ['boast','prophecy'] },
+  { call: 'I dare do all that may become a man.', reply: 'Your brain is as dry as the remainder biscuit after a voyage.', cats: ['boast','insult'] },
+  { call: 'Some are born great, some achieve greatness.', reply: 'Thou hast no more brain than I have in mine elbows.', cats: ['boast','insult'] },
+  // Drama: challenge and counter
+  { call: 'Thou art a villain!', reply: 'I am not bound to please thee with my answers.', cats: ['challenge','boast'] },
+  { call: 'Is this a dagger which I see before me?', reply: 'There are more things in heaven and earth than are dreamt of in your philosophy.', cats: ['challenge','madness'] },
+  { call: 'Have at thee, coward!', reply: 'Tempt not a desperate man.', cats: ['challenge','challenge'] },
+  { call: 'Out of my sight! Thou dost infect mine eyes.', reply: 'I am myself alone.', cats: ['challenge','boast'] },
+  // Drama: despair and comfort (or not)
+  { call: 'O, what a fall was there!', reply: 'What\'s gone and what\'s past help should be past grief.', cats: ['despair','despair'] },
+  { call: 'To be, or not to be: that is the question.', reply: 'There is nothing either good or bad, but thinking makes it so.', cats: ['despair','prophecy'] },
+  { call: 'O, I am fortune\'s fool!', reply: 'The fault, dear Brutus, is not in our stars, but in ourselves.', cats: ['despair','prophecy'] },
+  { call: 'Nothing will come of nothing.', reply: 'What\'s done is done.', cats: ['despair','prophecy'] },
+  // Madness exchanges
+  { call: 'Full of scorpions is my mind!', reply: 'Canst thou not minister to a mind diseased?', cats: ['madness','madness'] },
+  { call: 'My wits begin to turn.', reply: 'Though this be madness, yet there is method in\'t.', cats: ['madness','madness'] },
+  { call: 'Double, double, toil and trouble!', reply: 'Why, this is very midsummer madness!', cats: ['madness','madness'] },
+  { call: 'What a piece of work is man!', reply: 'Lord, what fools these mortals be!', cats: ['madness','madness'] },
+  // Tender farewells
+  { call: 'Good night, good night! Parting is such sweet sorrow.', reply: 'Adieu, adieu, adieu! Remember me.', cats: ['farewell','farewell'] },
+  { call: 'If we do meet again, why, we shall smile.', reply: 'We shall not look upon his like again.', cats: ['farewell','farewell'] },
+  { call: 'The rest is silence.', reply: 'Good night, sweet prince, and flights of angels sing thee to thy rest.', cats: ['farewell','farewell'] },
+  // Comic mismatch: gravity meets absurdity
+  { call: 'Beware the ides of March.', reply: 'A hit, a very palpable hit!', cats: ['prophecy','triumph'] },
+  { call: 'Something is rotten in the state of Denmark.', reply: 'The world is my oyster.', cats: ['prophecy','boast'] },
+  { call: 'Uneasy lies the head that wears a crown.', reply: 'Be not afraid of greatness!', cats: ['prophecy','triumph'] },
+  { call: 'Fair is foul, and foul is fair.', reply: 'All that glisters is not gold.', cats: ['prophecy','prophecy'] },
+  // Greeting that sets a tone
+  { call: 'Who goes there?', reply: 'I am not what I am.', cats: ['greeting','boast'] },
+  { call: 'Speak if you can: what are you?', reply: 'I am fire and air; my other elements I give to baser life.', cats: ['greeting','boast'] },
+  { call: 'How now, you secret, black, and midnight hags!', reply: 'By the pricking of my thumbs, something wicked this way comes.', cats: ['greeting','prophecy'] },
+  { call: 'You tremble and look pale.', reply: 'I bear a charmed life.', cats: ['greeting','boast'] },
+  // Triumph and farewell
+  { call: 'Our revels now are ended.', reply: 'Now my charms are all o\'erthrown.', cats: ['triumph','farewell'] },
+  { call: 'All\'s well that ends well.', reply: 'Ripeness is all.', cats: ['triumph','farewell'] },
+  { call: 'How beauteous mankind is! O brave new world!', reply: 'As flies to wanton boys are we to the gods.', cats: ['triumph','farewell'] },
 ];
 
 const STAGE_DIRS_OPEN = [
@@ -570,32 +619,32 @@ const STAGE_DIRS_MID = [
 ];
 
 const ARC_TEMPLATES = [
-  { name: 'The Rivalry', acts: [
+  { name: 'The Rivalry', subjects: ['honor','wit'], acts: [
     [['greeting',0],['greeting',1],['boast',0],['challenge',1]],
     [['insult',1],['challenge',0],['despair',1]],
     [['prophecy',0],['triumph',1],['farewell',0]],
   ]},
-  { name: 'The Romance', acts: [
+  { name: 'The Romance', subjects: ['love','nature'], acts: [
     [['greeting',0],['devotion',1],['devotion',0]],
     [['challenge',1],['despair',0],['madness',1]],
     [['prophecy',0],['devotion',1],['farewell',0]],
   ]},
-  { name: 'The Tragedy', acts: [
+  { name: 'The Tragedy', subjects: ['fate','death'], acts: [
     [['greeting',0],['boast',1],['challenge',0]],
     [['insult',1],['madness',0],['despair',1]],
     [['prophecy',0],['despair',1],['farewell',0]],
   ]},
-  { name: 'The Comedy', acts: [
+  { name: 'The Comedy', subjects: ['wit','appearance'], acts: [
     [['greeting',0],['insult',1],['boast',0],['insult',1]],
     [['challenge',0],['madness',1],['insult',0]],
     [['prophecy',1],['triumph',0],['farewell',1]],
   ]},
-  { name: 'The Dream', acts: [
+  { name: 'The Dream', subjects: ['fate','nature'], acts: [
     [['greeting',0],['prophecy',1],['devotion',0]],
     [['madness',1],['despair',0],['prophecy',1]],
     [['madness',0],['triumph',1],['farewell',0]],
   ]},
-  { name: 'The Trial', acts: [
+  { name: 'The Trial', subjects: ['honor','self'], acts: [
     [['greeting',0],['challenge',1],['boast',0]],
     [['insult',1],['challenge',0],['despair',1]],
     [['prophecy',0],['triumph',0],['farewell',1]],
@@ -624,8 +673,22 @@ const CAT_TO_MOOD = {
   farewell: 'farewell',
 };
 
-function pickLine(cat, preferTone, used) {
-  let pool = CORPUS.filter(l => l.cat === cat && l.tone === preferTone && !used.has(l.text));
+function pickLine(cat, preferTone, used, preferSubj, playSubjects) {
+  // Determine subject preference: explicit > play-level > none
+  const subjs = preferSubj ? [preferSubj] : (playSubjects || []);
+
+  // Best: matching cat + tone + preferred subject
+  let pool = [];
+  if (subjs.length > 0) {
+    pool = CORPUS.filter(l => l.cat === cat && l.tone === preferTone && subjs.includes(l.subj) && !used.has(l.text));
+  }
+  // Good: matching cat + preferred subject (any tone)
+  if (pool.length === 0 && subjs.length > 0) {
+    pool = CORPUS.filter(l => l.cat === cat && subjs.includes(l.subj) && !used.has(l.text));
+  }
+  // OK: matching cat + tone
+  if (pool.length === 0) pool = CORPUS.filter(l => l.cat === cat && l.tone === preferTone && !used.has(l.text));
+  // Fallback: matching cat
   if (pool.length === 0) pool = CORPUS.filter(l => l.cat === cat && !used.has(l.text));
   if (pool.length === 0) pool = CORPUS.filter(l => l.cat === cat);
   const line = pool[Math.floor(Math.random() * pool.length)];
@@ -633,13 +696,29 @@ function pickLine(cat, preferTone, used) {
   return line;
 }
 
+function findCouplet(callCat, replyCat, used) {
+  const pool = COUPLETS.filter(c =>
+    c.cats[0] === callCat && c.cats[1] === replyCat &&
+    !used.has(c.call) && !used.has(c.reply)
+  );
+  if (pool.length === 0) return null;
+  const c = pool[Math.floor(Math.random() * pool.length)];
+  used.add(c.call);
+  used.add(c.reply);
+  return c;
+}
+
 function generateScript() {
   const arc  = ARC_TEMPLATES[Math.floor(Math.random() * ARC_TEMPLATES.length)];
   const used = new Set();
   const tones = [perf[0].tags[0] || 'gentle', perf[1].tags[0] || 'gentle'];
   const script = [];
+  const playSubjects = arc.subjects || [];
 
   const usedDirs = new Set();
+  let lastSubj = null;
+  let motifLine = null;   // Act I line saved for Act III callback
+  let motifSpeaker = null;
 
   arc.acts.forEach((actBeats, ai) => {
     script.push({ act: ai+1, type: 'act-title', text: 'Act ' + ACT_NAMES[ai], mood: null, speaker: null });
@@ -651,9 +730,45 @@ function generateScript() {
     usedDirs.add(dir);
     script.push({ act: ai+1, type: 'direction', text: dir, mood: null, speaker: null });
 
-    for (const [cat, sp] of actBeats) {
-      const line = pickLine(cat, tones[sp], used);
+    let i = 0;
+    while (i < actBeats.length) {
+      const [cat, sp] = actBeats[i];
+
+      // Motif callback: in Act III, before the last beat, echo an Act I line
+      if (ai === 2 && i === actBeats.length - 2 && motifLine) {
+        const otherSp = motifSpeaker === 0 ? 1 : 0;
+        script.push({ act: 3, type: 'line', speaker: otherSp, text: motifLine.text, mood: CAT_TO_MOOD[motifLine.cat] || 'farewell' });
+        motifLine = null; // only once
+      }
+
+      // Try to use a couplet if the next beat is by the other speaker
+      if (i + 1 < actBeats.length) {
+        const [nextCat, nextSp] = actBeats[i + 1];
+        if (nextSp !== sp) {
+          const coup = findCouplet(cat, nextCat, used);
+          if (coup) {
+            script.push({ act: ai+1, type: 'line', speaker: sp, text: coup.call, mood: CAT_TO_MOOD[cat] });
+            script.push({ act: ai+1, type: 'line', speaker: nextSp, text: coup.reply, mood: CAT_TO_MOOD[nextCat] });
+            lastSubj = null;
+            i += 2;
+            continue;
+          }
+        }
+      }
+
+      // Subject bias: 65% chance to thread from last subject, else use play subjects
+      const biasSubj = (lastSubj && Math.random() < 0.65) ? lastSubj : null;
+      const line = pickLine(cat, tones[sp], used, biasSubj, playSubjects);
       script.push({ act: ai+1, type: 'line', speaker: sp, text: line.text, mood: CAT_TO_MOOD[cat] });
+      lastSubj = line.subj;
+
+      // Save a memorable Act I line as potential motif (pick the 2nd or 3rd dialogue line)
+      if (ai === 0 && !motifLine && i >= 1 && cat !== 'greeting') {
+        motifLine = line;
+        motifSpeaker = sp;
+      }
+
+      i++;
     }
   });
 
