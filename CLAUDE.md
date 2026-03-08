@@ -2,6 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Collaboration context
+
+This is a mystery collaboration between two friends of 30+ years: **rmauceri** and **gulley** (GitHub: gulley). They take turns making changes, both vibe-coding with AI. Neither knows exactly what this is becoming — the project is part art, part discovery, part exploration.
+
+**Gulley** built the original wunderkammer. He's a professional software engineer, active writer, and student of mathematics, art, theater, and music. He values originality, the absurd, and humor. He's fascinated by pseudo-science, alchemy, astrology, and the esoteric. His wife tragically passed from cancer a few years ago; they were high school sweethearts.
+
+**Creative principles for this project:**
+- Favor the surprising and original over the polished and expected
+- Leave creative seams — don't over-engineer or close off directions the other collaborator might pull on
+- The tone is playful on the surface, serious craft underneath
+- Embrace absurdity and humor; the wunderkammer is a cabinet of curiosities, not a product
+- Both collaborators are technically strong — code can be clever and expressive
+
 ## Project overview
 
 Single-file HTML/JS interactive art piece. No build step, no dependencies, no package manager. Open `index.html` directly in a browser to run it.
