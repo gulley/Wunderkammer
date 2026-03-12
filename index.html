@@ -39,11 +39,45 @@ canvas.height = 520;
 
 const CARD_H = 123;  // 112.5 % of original 110 px
 
+// Chroma-key an image and pre-scale it to its final display size.
+// Returns an offscreen canvas at cardW×CARD_H with green pixels removed.
+// Pre-scaling eliminates moiré from real-time downscaling of high-res images.
+function chromaKey(img, greenDominance = 60, minGreen = 80) {
+  // Step 1: key out green at full resolution
+  const full = document.createElement('canvas');
+  full.width = img.naturalWidth; full.height = img.naturalHeight;
+  const fc = full.getContext('2d');
+  fc.drawImage(img, 0, 0);
+  const id = fc.getImageData(0, 0, full.width, full.height);
+  const d = id.data;
+  for (let i = 0; i < d.length; i += 4) {
+    const r = d[i], g = d[i+1], b = d[i+2];
+    const dominance = g - Math.max(r, b);
+    if (g > minGreen && dominance > 0) {
+      const t = Math.min(1, dominance / greenDominance);
+      d[i+3] = Math.round(d[i+3] * (1 - t));
+    }
+  }
+  fc.putImageData(id, 0, 0);
+
+  // Step 2: scale down to display size so drawImage is always 1:1
+  const cardW = Math.round(CARD_H * img.naturalWidth / img.naturalHeight);
+  const scaled = document.createElement('canvas');
+  scaled.width = cardW; scaled.height = CARD_H;
+  const sc = scaled.getContext('2d');
+  sc.imageSmoothingEnabled = true;
+  sc.imageSmoothingQuality = 'high';
+  sc.drawImage(full, 0, 0, cardW, CARD_H);
+  return scaled;
+}
+
 function loadRosterEntry(src, gait, name, tags) {
-  const e = { img: new Image(), cardW: 60, cardH: CARD_H, gait, name, tags: tags || [] };
-  e.img.src = src;
-  e.img.onload = () => {
-    e.cardW = Math.round(CARD_H * e.img.naturalWidth / e.img.naturalHeight);
+  const e = { img: null, cardW: 60, cardH: CARD_H, gait, name, tags: tags || [] };
+  const raw = new Image();
+  raw.src = src;
+  raw.onload = () => {
+    e.img   = chromaKey(raw);
+    e.cardW = e.img.width;   // pre-scaled canvas is already the right size
   };
   return e;
 }
@@ -51,62 +85,62 @@ function loadRosterEntry(src, gait, name, tags) {
 const ROSTER = [
 
   loadRosterEntry('assets/king.png', {
-    bob:      a => -26 * Math.pow(Math.abs(Math.sin(2*a)), 0.45),
-    waggle:   a => Math.sin(a * 2.0) * 0.09,
+    bob:      a => -13 * Math.pow(Math.abs(Math.sin(2*a)), 0.45),
+    waggle:   a => Math.sin(a * 2.0) * 0.045,
     cardTilt: a => -0.08 + Math.sin(a * 2.0) * 0.04,
   }, 'King', ['royal', 'gentle']),
 
   loadRosterEntry('assets/boney.png', {
-    bob:      a => -(12 + 9 * Math.abs(Math.sin(a))) * Math.abs(Math.sin(2*a)),
-    waggle:   a => Math.sin(a * 3.0) * 0.17 + Math.sin(a * 11.3) * 0.045,
+    bob:      a => -(6 + 4.5 * Math.abs(Math.sin(a))) * Math.abs(Math.sin(2*a)),
+    waggle:   a => Math.sin(a * 3.0) * 0.085 + Math.sin(a * 11.3) * 0.0225,
     cardTilt: a => 0.10 + Math.sin(a * 3.0) * 0.09,
   }, 'Boney', ['dark', 'wild']),
 
   loadRosterEntry('assets/spike.png', {
-    bob:      a => -30 * Math.pow(Math.abs(Math.sin(2*a)), 1.7),
-    waggle:   a => Math.sin(a * 2.0) * 0.15,
+    bob:      a => -15 * Math.pow(Math.abs(Math.sin(2*a)), 1.7),
+    waggle:   a => Math.sin(a * 2.0) * 0.075,
     cardTilt: a => 0.07 + Math.sin(a * 2.0) * 0.08,
   }, 'Spike', ['dark', 'comic']),
 
   loadRosterEntry('assets/sol.png', {
-    bob:      a => -7 * Math.abs(Math.sin(a)),
-    waggle:   a => Math.sin(a * 1.0) * 0.05,
+    bob:      a => -3.5 * Math.abs(Math.sin(a)),
+    waggle:   a => Math.sin(a * 1.0) * 0.025,
     cardTilt: a => Math.sin(a * 1.5) * 0.05,
   }, 'Sol', ['gentle', 'royal']),
 
   loadRosterEntry('assets/jester.png', {
-    bob:      a => -22 * Math.abs(Math.sin(4*a)),
-    waggle:   a => Math.sin(a * 4.0) * 0.19 + Math.sin(a * 7.0) * 0.06,
+    bob:      a => -11 * Math.abs(Math.sin(4*a)),
+    waggle:   a => Math.sin(a * 4.0) * 0.095 + Math.sin(a * 7.0) * 0.03,
     cardTilt: a => Math.sin(a * 4.0) * 0.22,
   }, 'Jester', ['comic', 'wild']),
 
   loadRosterEntry('assets/piper.png', {
-    bob:      a => -18 * Math.abs(Math.sin(2*a)),
-    waggle:   a => Math.sin(a * 2.0) * 0.07,
+    bob:      a => -9 * Math.abs(Math.sin(2*a)),
+    waggle:   a => Math.sin(a * 2.0) * 0.035,
     cardTilt: a => 0.05 + Math.sin(a * 2.0) * 0.03,
   }, 'Piper', ['gentle', 'comic']),
 
   loadRosterEntry('assets/bromley.png', {
-    bob:      a => -24 * Math.pow(Math.abs(Math.sin(2*a)), 0.55),
-    waggle:   a => Math.sin(a * 2.0) * 0.13,
+    bob:      a => -12 * Math.pow(Math.abs(Math.sin(2*a)), 0.55),
+    waggle:   a => Math.sin(a * 2.0) * 0.065,
     cardTilt: a => Math.sin(a * 2.0) * 0.11,
   }, 'Bromley', ['royal', 'dark']),
 
   loadRosterEntry('assets/george.png', {
-    bob:      a => -25 * Math.pow(Math.abs(Math.sin(2*a)), 1.4),
-    waggle:   a => Math.sin(a * 2.0) * 0.08,
+    bob:      a => -12.5 * Math.pow(Math.abs(Math.sin(2*a)), 1.4),
+    waggle:   a => Math.sin(a * 2.0) * 0.04,
     cardTilt: a => -0.05 + Math.sin(a * 2.0) * 0.03,
   }, 'George', ['gentle', 'royal']),
 
   loadRosterEntry('assets/princess.png', {
-    bob:      a => -12 * Math.abs(Math.sin(2*a)),
-    waggle:   a => Math.sin(a * 1.5) * 0.05,
+    bob:      a => -6 * Math.abs(Math.sin(2*a)),
+    waggle:   a => Math.sin(a * 1.5) * 0.025,
     cardTilt: a => -0.04 + Math.sin(a * 1.5) * 0.04,
   }, 'Princess', ['royal', 'gentle']),
 
   loadRosterEntry('assets/hag.png', {
-    bob:      a => -(8 + 14 * Math.abs(Math.sin(a * 0.7))) * Math.pow(Math.abs(Math.sin(2*a)), 0.6),
-    waggle:   a => Math.sin(a * 3.0) * 0.16 + Math.sin(a * 7.7) * 0.05,
+    bob:      a => -(4 + 7 * Math.abs(Math.sin(a * 0.7))) * Math.pow(Math.abs(Math.sin(2*a)), 0.6),
+    waggle:   a => Math.sin(a * 3.0) * 0.08 + Math.sin(a * 7.7) * 0.025,
     cardTilt: a => 0.12 + Math.sin(a * 3.0) * 0.10,
   }, 'Hag', ['dark', 'wild']),
 
@@ -198,6 +232,7 @@ function twoDistinctIndices(n) {
 
 function makeNewPair() {
   const [ia, ib] = twoDistinctIndices(ROSTER.length);
+  const sharedTrack = makeWobblyTrack();
   return [ia, ib].map((idx, slot) => {
     const r = ROSTER[idx];
     return {
@@ -209,7 +244,7 @@ function makeNewPair() {
       cardTilt: r.gait.cardTilt,
       name:     r.name,
       tags:     r.tags,
-      track:    makeWobblyTrack(),
+      track:    sharedTrack,
       angle:    slot * Math.PI,
     };
   });
@@ -291,10 +326,37 @@ function startTransition() {
 // =============================================================================
 
 const BACKDROP_H  = 233;
-const N_BACKDROPS = 2;
+const N_BACKDROPS = 5;
 let   backdropIdx = 0;
 
-const backdropImgs = ['assets/castle.png', 'assets/forest.png'].map(src => {
+// Scene transition state machine (mirrors character transition)
+const SCENE_TRANS_DUR = 0.5;
+let sceneTransPhase = 'idle';   // 'idle' | 'exiting' | 'entering'
+let sceneTransT     = 0;
+let pendingBackdrop = -1;
+
+function startSceneTransition() {
+  if (sceneTransPhase !== 'idle' || transPhase !== 'idle') return;
+  // Pick a random backdrop that isn't the current one
+  let next;
+  do { next = Math.floor(Math.random() * N_BACKDROPS); } while (next === backdropIdx);
+  pendingBackdrop = next;
+  sceneTransPhase = 'exiting';
+  sceneTransT     = 0;
+  // Also clear any active play
+  playScript = [];
+  playBeatIdx = -1;
+  for (const c of cueCards) { c.phase = 'exiting'; c.phaseT = 0; }
+  emotionParticles = [];
+}
+
+function sceneYOffset() {
+  if (sceneTransPhase === 'exiting')  return easeIn(sceneTransT)  * BACKDROP_H;
+  if (sceneTransPhase === 'entering') return (1 - easeOut(sceneTransT)) * BACKDROP_H;
+  return 0;
+}
+
+const backdropImgs = ['assets/castle.png', 'assets/forest.png', 'assets/graveyard.png', 'assets/throne_room.png', 'assets/town_square.png'].map(src => {
   const img = new Image();
   img.src = src;
   return img;
@@ -805,10 +867,14 @@ function activateBeat(beat) {
     if (c.phase !== 'exiting') { c.phase = 'exiting'; c.phaseT = 0; }
   }
   if (!beat) return;
-  if (beat.type === 'title')     playTitleSting();
-  if (beat.type === 'act-title') playActSting();
-  if (beat.type === 'direction') playDirSting();
-  if (beat.type === 'fin')       playFinSting();
+  if (beat.type === 'title')                        playTitleSting();
+  if (beat.type === 'act-title' && beat.act >= 2) {
+    playActEndBell();
+    musicHush = HUSH_DUR;
+  }
+  if (beat.type === 'act-title')                    playActSting();
+  if (beat.type === 'direction')                    playDirSting();
+  if (beat.type === 'fin')                          playFinSting();
   if (beat.type === 'line' && beat.speaker !== null && beat.mood) {
     spawnEmotionGlyphs(beat.speaker, beat.mood);
   }
@@ -956,11 +1022,11 @@ function drawEmotionParticles() {
 }
 
 // =============================================================================
-// STARS — scattered in the dark canvas area surrounding the stage box.
-// Generated once; twinkling driven by sin(time) in drawStars().
+// DUST MOTES — slow-drifting particles in the dark surround. Attic atmosphere.
+// Generated once; position computed from timestamp in drawDustMotes().
 // =============================================================================
 
-const STARS = (() => {
+const DUST = (() => {
   const backdropTop = btl[1] - BACKDROP_H;
   const bL = btl[0] - 16;
   const bR = btr[0] + 16;
@@ -968,20 +1034,105 @@ const STARS = (() => {
 
   function rnd(a, b) { return a + Math.random() * (b - a); }
   function mk(x, y) {
-    return { x, y, r: 0.4 + Math.random() * 1.1,
-             ph: Math.random() * Math.PI * 2,
-             sp: 0.6 + Math.random() * 1.4 };
+    return {
+      x, y,
+      r:   0.4 + Math.random() * 1.0,
+      a:   0.07 + Math.random() * 0.16,
+      ph:  Math.random() * Math.PI * 2,
+      vx:  0.10 + Math.random() * 0.22,   // horizontal drift freq
+      vy:  0.06 + Math.random() * 0.14,   // vertical drift freq
+      ax:  5 + Math.random() * 16,        // horizontal drift range px
+      ay:  6 + Math.random() * 14,        // vertical drift range px
+    };
   }
 
-  const s = [];
-  // Above the backdrop (full canvas width)
-  for (let i = 0; i < 42; i++) s.push(mk(rnd(4, 636), rnd(4, backdropTop - 6)));
-  // Flanking the backdrop / stage-top (narrow side margins)
-  for (let i = 0; i < 5;  i++) s.push(mk(rnd(4, bL),        rnd(backdropTop, ftl[1])));
-  for (let i = 0; i < 5;  i++) s.push(mk(rnd(bR, 636),      rnd(backdropTop, ftl[1])));
+  const d = [];
+  // Above the backdrop (full canvas width) — densest, lit by ambient glow
+  for (let i = 0; i < 52; i++) d.push(mk(rnd(4, 636), rnd(4, backdropTop - 6)));
+  // Flanking margins
+  for (let i = 0; i < 8;  i++) d.push(mk(rnd(4, bL),   rnd(backdropTop, ftl[1])));
+  for (let i = 0; i < 8;  i++) d.push(mk(rnd(bR, 636), rnd(backdropTop, ftl[1])));
   // Below the stage
-  for (let i = 0; i < 16; i++) s.push(mk(rnd(4, 636),       rnd(stageBot, 516)));
-  return s;
+  for (let i = 0; i < 20; i++) d.push(mk(rnd(4, 636),  rnd(stageBot, 516)));
+  return d;
+})();
+
+// Pre-baked wood grain texture: long wavy horizontal grain lines + sparse stipple.
+// Used for all box surfaces (stage top, front face, lid).
+const woodCanvas = (() => {
+  const wc = document.createElement('canvas');
+  wc.width = 640; wc.height = 520;
+  const wx = wc.getContext('2d');
+  const rnd = () => Math.random();
+  // Long wavy grain lines — the dominant feature of wood
+  for (let i = 0; i < 380; i++) {
+    const y = rnd() * 520;
+    const dark = rnd() < 0.28;
+    wx.strokeStyle = dark
+      ? `rgba(18,8,0,${0.06 + rnd() * 0.18})`
+      : `rgba(70,35,5,${0.03 + rnd() * 0.07})`;
+    wx.lineWidth = 0.5 + rnd() * (dark ? 2.0 : 1.0);
+    wx.beginPath();
+    wx.moveTo(0, y);
+    const cp1y = y + (rnd() - 0.5) * 8;
+    const cp2y = y + (rnd() - 0.5) * 10;
+    const endY  = y + (rnd() - 0.5) * 5;
+    wx.bezierCurveTo(160 + rnd() * 80, cp1y, 380 + rnd() * 80, cp2y, 640, endY);
+    wx.stroke();
+  }
+  // Sparse stipple to bind the grain
+  for (let i = 0; i < 5000; i++) {
+    wx.fillStyle = `rgba(0,0,0,${0.03 + rnd() * 0.07})`;
+    wx.fillRect(rnd() * 640, rnd() * 520, 1, 1);
+  }
+  // One subtle knot swirl
+  const kx = 90 + rnd() * 320, ky = 60 + rnd() * 300;
+  for (let i = 0; i < 7; i++) {
+    const r = 5 + i * 3.2;
+    wx.strokeStyle = `rgba(25,10,0,${0.10 - i * 0.012})`;
+    wx.lineWidth = 1.0;
+    wx.beginPath();
+    wx.ellipse(kx, ky, r * 2.0, r * 0.65, 0.1, 0, Math.PI * 2);
+    wx.stroke();
+  }
+  return wc;
+})();
+
+// Pre-baked paper/leather texture: fine cross-fiber stipple + aging patches.
+// Used on the puppet cards (the surfaces that carry the character drawings).
+const paperCanvas = (() => {
+  const pc = document.createElement('canvas');
+  pc.width = 640; pc.height = 520;
+  const px = pc.getContext('2d');
+  const rnd = () => Math.random();
+  // Fine stipple — denser and finer than wood
+  for (let i = 0; i < 24000; i++) {
+    px.fillStyle = `rgba(70,40,15,${0.02 + rnd() * 0.09})`;
+    px.fillRect(rnd() * 640, rnd() * 520, rnd() < 0.65 ? 0.7 : 1.0, 0.7);
+  }
+  // Short crossing fibers (horizontal + vertical at low freq)
+  for (let i = 0; i < 3200; i++) {
+    const x = rnd() * 640, y = rnd() * 520;
+    const len   = 1.5 + rnd() * 7;
+    const angle = rnd() < 0.55 ? (rnd() - 0.5) * 0.25 : Math.PI * 0.5 + (rnd() - 0.5) * 0.25;
+    px.strokeStyle = `rgba(55,30,8,${0.03 + rnd() * 0.06})`;
+    px.lineWidth   = 0.3 + rnd() * 0.4;
+    px.beginPath();
+    px.moveTo(x, y);
+    px.lineTo(x + Math.cos(angle) * len, y + Math.sin(angle) * len);
+    px.stroke();
+  }
+  // Subtle aging blobs — old foxing marks
+  for (let i = 0; i < 10; i++) {
+    const gx2 = rnd() * 640, gy2 = rnd() * 520;
+    const r = 12 + rnd() * 35;
+    const g = px.createRadialGradient(gx2, gy2, 0, gx2, gy2, r);
+    g.addColorStop(0, `rgba(55,28,0,${0.07 + rnd() * 0.09})`);
+    g.addColorStop(1, 'rgba(55,28,0,0)');
+    px.fillStyle = g;
+    px.fillRect(gx2 - r, gy2 - r, r * 2, r * 2);
+  }
+  return pc;
 })();
 
 // Pre-baked grain texture: random stipple + short fiber strokes for rough wood feel.
@@ -1023,6 +1174,19 @@ function drawGrain(pts, alpha) {
   ctx.restore();
 }
 
+// Overlay wood grain texture clipped to an arbitrary polygon.
+function drawWoodGrain(pts, alpha) {
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
+  for (let i = 1; i < pts.length; i++) ctx.lineTo(pts[i][0], pts[i][1]);
+  ctx.closePath(); ctx.clip();
+  ctx.globalAlpha = alpha;
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.drawImage(woodCanvas, 0, 0);
+  ctx.restore();
+}
+
 // =============================================================================
 // AUDIO — kalimba-like plucked tones (D Phrygian)
 // =============================================================================
@@ -1030,6 +1194,8 @@ function drawGrain(pts, alpha) {
 let audioCtx  = null;
 let noteTimer = 0;
 let tickTimer = 0;
+let musicHush = 0;    // seconds of silence remaining between acts
+const HUSH_DUR = 3.0; // total hush duration (must match value set in activateBeat)
 
 // Fire a single soft tick: a brief noise burst filtered to a thin click.
 function fireTick() {
@@ -1131,6 +1297,29 @@ function playFinSting() {
   pluckNote(293.66, 0.13, 0.45);
 }
 
+// A small tinkly bell between acts — sine partials at inharmonic bell ratios.
+function playActEndBell() {
+  if (!audioCtx) return;
+  const t0   = audioCtx.currentTime;
+  const fund = 1046.50; // C6 — small, high, fits a tiny stage bell
+  const parts = [
+    { ratio: 1.000, vol: 0.17, decay: 2.2 },
+    { ratio: 2.756, vol: 0.09, decay: 1.1 },
+    { ratio: 5.404, vol: 0.05, decay: 0.6 },
+  ];
+  for (const { ratio, vol, decay } of parts) {
+    const osc  = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(fund * ratio, t0);
+    gain.gain.setValueAtTime(0, t0);
+    gain.gain.linearRampToValueAtTime(vol, t0 + 0.004);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + decay);
+    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.start(t0); osc.stop(t0 + decay + 0.05);
+  }
+}
+
 // =============================================================================
 // DRAWING HELPERS
 // =============================================================================
@@ -1158,27 +1347,32 @@ function withAlpha(a, fn) { ctx.save(); ctx.globalAlpha = a; fn(); ctx.restore()
 // SCENE DRAWING
 // =============================================================================
 
-function drawStars(ts) {
+function drawDustMotes(ts) {
   ctx.save();
-  for (const s of STARS) {
-    const pulse = 0.5 + 0.5 * Math.sin(s.ph + ts * 0.001 * s.sp);
-    const a = 0.38 + 0.62 * pulse;
-    // Outer glow
-    ctx.globalAlpha = a * 0.18;
-    ctx.fillStyle = '#ffe8a0';
-    ctx.beginPath(); ctx.arc(s.x, s.y, s.r * 3.8, 0, Math.PI * 2); ctx.fill();
-    // Bright core
-    ctx.globalAlpha = a;
-    ctx.fillStyle = '#fffef5';
-    ctx.beginPath(); ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2); ctx.fill();
+  const t = ts * 0.001;
+  for (const m of DUST) {
+    const x = m.x + Math.sin(t * m.vx + m.ph) * m.ax;
+    const y = m.y + Math.cos(t * m.vy + m.ph * 1.3) * m.ay;
+    // Slow opacity breathe — much gentler than star twinkle
+    const breathe = 0.75 + 0.25 * Math.sin(t * 0.3 + m.ph);
+    ctx.globalAlpha = m.a * breathe;
+    ctx.fillStyle = '#c4a87a';
+    ctx.beginPath(); ctx.arc(x, y, m.r, 0, Math.PI * 2); ctx.fill();
   }
   ctx.restore();
 }
 
 function drawBackdrop() {
   const x0 = btl[0], x1 = btr[0];
-  const y0 = btl[1] - BACKDROP_H;
+  const slide = sceneYOffset();   // backdrop sinks down during scene transition
+  const y0 = btl[1] - BACKDROP_H + slide;
   const w  = x1 - x0, h = BACKDROP_H;
+
+  // Clip to the backdrop region so it doesn't paint over the stage top as it sinks
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(x0, btl[1] - BACKDROP_H, w, BACKDROP_H);
+  ctx.clip();
 
   ctx.fillStyle = backdropWashColor() || '#d8ccaa';
   ctx.fillRect(x0, y0, w, h);
@@ -1190,11 +1384,29 @@ function drawBackdrop() {
     ctx.drawImage(img, x0, y0, w, h);
     ctx.restore();
   }
+  ctx.restore();
 }
 
 function drawStageTop() {
   poly([ftl, ftr, btr, btl], '#8a8070', null);
-  drawGrain([ftl, ftr, btr, btl], 0.55);
+  drawWoodGrain([ftl, ftr, btr, btl], 0.68);
+  // Vignette: darken back edge and side edges
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(ftl[0], ftl[1]); ctx.lineTo(ftr[0], ftr[1]);
+  ctx.lineTo(btr[0], btr[1]); ctx.lineTo(btl[0], btl[1]);
+  ctx.closePath(); ctx.clip();
+  const gBack = ctx.createLinearGradient(0, btl[1], 0, ftl[1]);
+  gBack.addColorStop(0, 'rgba(0,0,0,0.55)');
+  gBack.addColorStop(0.7, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gBack; ctx.fillRect(0, btl[1], 640, ftl[1] - btl[1]);
+  const gL = ctx.createLinearGradient(ftl[0], 0, ftl[0] + 30, 0);
+  gL.addColorStop(0, 'rgba(0,0,0,0.35)'); gL.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gL; ctx.fillRect(ftl[0], btl[1], 35, ftl[1] - btl[1]);
+  const gR = ctx.createLinearGradient(ftr[0], 0, ftr[0] - 30, 0);
+  gR.addColorStop(0, 'rgba(0,0,0,0.35)'); gR.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gR; ctx.fillRect(ftr[0] - 35, btl[1], 35, ftl[1] - btl[1]);
+  ctx.restore();
 }
 
 function drawTopEdges() {
@@ -1218,7 +1430,7 @@ function drawLid(openT) {
   if (theta < Math.PI / 2) {
     // Outside of lid visible (wooden top face, foreshortening as it rotates up)
     poly([fl, fr, btr, btl], '#8a8070', null);
-    drawGrain([fl, fr, btr, btl], 0.55);
+    drawWoodGrain([fl, fr, btr, btl], 0.68);
   } else {
     // Inside of lid visible — draw the backdrop image on the inner face
     ctx.save();
@@ -1238,7 +1450,25 @@ function drawLid(openT) {
 
 function drawFrontFace() {
   poly([ftl, ftr, fbr, fbl], '#7a7060', null);
-  drawGrain([ftl, ftr, fbr, fbl], 0.55);
+  drawWoodGrain([ftl, ftr, fbr, fbl], 0.68);
+  // Vignette: darken left, right, and bottom edges
+  ctx.save();
+  ctx.beginPath();
+  ctx.moveTo(ftl[0], ftl[1]); ctx.lineTo(ftr[0], ftr[1]);
+  ctx.lineTo(fbr[0], fbr[1]); ctx.lineTo(fbl[0], fbl[1]);
+  ctx.closePath(); ctx.clip();
+  const W  = ftr[0] - ftl[0];
+  const ew = W * 0.17;
+  const gL = ctx.createLinearGradient(ftl[0], 0, ftl[0] + ew, 0);
+  gL.addColorStop(0, 'rgba(0,0,0,0.50)'); gL.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gL; ctx.fillRect(ftl[0], ftl[1], ew, fbl[1] - ftl[1]);
+  const gR = ctx.createLinearGradient(ftr[0], 0, ftr[0] - ew, 0);
+  gR.addColorStop(0, 'rgba(0,0,0,0.50)'); gR.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gR; ctx.fillRect(ftr[0] - ew, ftl[1], ew, fbl[1] - ftl[1]);
+  const gB = ctx.createLinearGradient(0, fbl[1], 0, fbl[1] - 42);
+  gB.addColorStop(0, 'rgba(0,0,0,0.44)'); gB.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gB; ctx.fillRect(ftl[0], fbl[1] - 46, W, 46);
+  ctx.restore();
 }
 
 function drawFrontEdges() {
@@ -1302,7 +1532,7 @@ function drawCrankArm() {
   const ky = ay + Math.sin(crankA) * 22;
   ctx.strokeStyle = '#1a1206'; ctx.lineWidth = 4;
   ctx.beginPath(); ctx.moveTo(ax,ay); ctx.lineTo(kx,ky); ctx.stroke();
-  ctx.fillStyle = '#4a3420'; ctx.strokeStyle = '#1a1206'; ctx.lineWidth = 1.5;
+  ctx.fillStyle = '#150f04'; ctx.strokeStyle = '#1a1206'; ctx.lineWidth = 1.5;
   ctx.beginPath(); ctx.arc(kx, ky, 7, 0, Math.PI*2); ctx.fill(); ctx.stroke();
 }
 
@@ -1312,7 +1542,16 @@ function drawPuppet(p, yOffset, alpha, cardTint) {
 
   const pos      = p.track.pt(p.angle);
   const posAhead = p.track.pt(p.angle + 0.01);
-  const movingRight = posAhead[0] > pos[0];
+  const dx       = posAhead[0] - pos[0];
+  const dy       = posAhead[1] - pos[1];
+  const facing   = Math.atan2(dy, dx);
+  // -cos(facing): full width when moving horizontally, edge-on when moving into/out of stage
+  // Sign naturally handles facing direction (negative = face left, positive = face right)
+  const rawScale = -Math.cos(facing);
+  const MIN_CARD_SCALE = 0.15;
+  const sign     = Math.sign(rawScale) || 1;
+  const scaleX   = sign * Math.max(Math.abs(rawScale), MIN_CARD_SCALE);
+
   const bob      = p.bob(p.angle) * PUPPET_SCALE;
   const waggle   = p.waggle(p.angle);
   const cardTilt = p.cardTilt(p.angle);
@@ -1322,7 +1561,7 @@ function drawPuppet(p, yOffset, alpha, cardTint) {
   ctx.translate(pos[0], pos[1] + yOffset);
   ctx.rotate(waggle);
 
-  ctx.strokeStyle = '#6a4828'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
+  ctx.strokeStyle = '#150f04'; ctx.lineWidth = 2.5; ctx.lineCap = 'round';
   ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, bob - stickH); ctx.stroke();
   ctx.lineCap = 'butt';
 
@@ -1331,13 +1570,10 @@ function drawPuppet(p, yOffset, alpha, cardTint) {
   ctx.rotate(cardTilt);
 
   const bx = -p.cardW / 2, by = -p.cardH;
-  ctx.fillStyle = cardTint || '#ede4c8'; ctx.strokeStyle = '#1a1206'; ctx.lineWidth = 1.0;
-  ctx.beginPath(); ctx.rect(bx, by, p.cardW, p.cardH); ctx.fill(); ctx.stroke();
 
-  if (p.img.complete && p.img.naturalWidth > 0) {
+  if (p.img) {
     ctx.save();
-    ctx.globalCompositeOperation = 'multiply';
-    if (movingRight) ctx.scale(-1, 1);
+    ctx.scale(scaleX, 1);
     ctx.drawImage(p.img, bx, by, p.cardW, p.cardH);
     ctx.restore();
   }
@@ -1485,12 +1721,25 @@ function draw(ts) {
   // Advance crank (puppets wind down after play ends)
   if (running) {
     if (playEnded) windDown = Math.max(0, windDown - dt * 0.35);
+    // Inter-act hush: decelerate over first 0.5s, pause, accelerate over last 0.5s
+    const RAMP = 0.5;
+    let hushMult = 1;
+    if (musicHush > 0) {
+      const elapsed = HUSH_DUR - musicHush;
+      if (elapsed < RAMP)              hushMult = 1 - (elapsed / RAMP);        // decel
+      else if (musicHush < RAMP)       hushMult = 1 - (musicHush / RAMP);      // accel
+      else                             hushMult = 0;                            // paused
+    }
     const dir = shiftHeld ? -1 : 1;
-    for (const p of perf) p.angle += SPEED * dt * dir * windDown;
+    for (const p of perf) p.angle += SPEED * dt * dir * windDown * hushMult;
     crankA += SPEED * dt * 2.0 * dir;
     if (!shiftHeld && windDown > 0.05) {
-      noteTimer -= dt;
-      if (noteTimer <= 0) triggerNote();
+      if (musicHush > 0) {
+        musicHush -= dt;
+      } else {
+        noteTimer -= dt;
+        if (noteTimer <= 0) triggerNote();
+      }
     }
     if (windDown > 0.05) {
       tickTimer -= dt;
@@ -1515,6 +1764,23 @@ function draw(ts) {
         transT     = 0;
         if (openState === 'open') openState = 'playing';
         startPlay();
+      }
+    }
+  }
+
+  // Advance scene transition
+  if (sceneTransPhase !== 'idle') {
+    sceneTransT += dt / SCENE_TRANS_DUR;
+    if (sceneTransT >= 1) {
+      if (sceneTransPhase === 'exiting') {
+        backdropIdx     = pendingBackdrop;
+        pendingBackdrop = -1;
+        sceneTransPhase = 'entering';
+        sceneTransT     = 0;
+      } else {
+        sceneTransPhase = 'idle';
+        sceneTransT     = 0;
+        if (openState === 'playing') startPlay();
       }
     }
   }
@@ -1579,8 +1845,8 @@ function draw(ts) {
   ctx.fillStyle = '#0e0b08';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Stars first, in the dark surround
-  drawStars(ts);
+  // Dust motes drifting in the dark surround
+  drawDustMotes(ts);
 
   // Backdrop: static once open; during opening the lid itself shows the image
   if (openState === 'open' || openState === 'playing') drawBackdrop();
@@ -1588,8 +1854,8 @@ function draw(ts) {
   // Stage surface
   drawStageTop();
 
-  // Slot grooves drawn first, then puppets on top
-  for (const p of perf) drawSlotTrack(p);
+  // Slot groove drawn once (both puppets share the same track)
+  if (perf[0]) drawSlotTrack(perf[0]);
   const sorted = [...perf].sort((a, b) =>
     a.track.pt(a.angle)[1] - b.track.pt(b.angle)[1]
   );
@@ -1662,7 +1928,7 @@ function handleInputDown(e) {
       openState = 'opening';
       openT     = 0;
     } else {
-      backdropIdx = (backdropIdx + 1) % N_BACKDROPS;
+      startSceneTransition();
     }
   }
 }
