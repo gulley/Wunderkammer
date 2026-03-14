@@ -1417,6 +1417,8 @@ const AUD_CUE_TEXT = {
   farewell:  ['Sniffles', 'Bittersweet Sighs'],
 };
 
+let audienceCues = [];
+
 // Add side-positioned cue (for chants coming from audience flanks)
 function spawnSideCues(text) {
   for (const c of audienceCues) {
