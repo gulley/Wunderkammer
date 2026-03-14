@@ -324,7 +324,7 @@ function startTransition() {
   for (const c of cueCards) { c.phase = 'exiting'; c.phaseT = 0; }
   emotionParticles = [];
   resetAudience();
-  fireZip();
+  firePop();
 }
 
 // =============================================================================
@@ -1899,28 +1899,33 @@ function fireWhoosh() {
   src.start(t0); src.stop(t0 + dur + 0.01);
 }
 
-// Character change zip — rising high-pass filtered noise burst
-function fireZip() {
+// Character change pop — comic cork-pop: fast pitch drop + resonant ping
+function firePop() {
   if (!audioCtx) return;
   const t0 = audioCtx.currentTime;
-  const dur = 0.28;
-  const len = audioCtx.sampleRate * dur | 0;
-  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
-  const d = buf.getChannelData(0);
-  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
-  const src = audioCtx.createBufferSource(); src.buffer = buf;
-  const hp = audioCtx.createBiquadFilter();
-  hp.type = 'highpass'; hp.Q.value = 2.0;
-  hp.frequency.setValueAtTime(800, t0);
-  hp.frequency.exponentialRampToValueAtTime(6000, t0 + dur * 0.7);
-  hp.frequency.exponentialRampToValueAtTime(3000, t0 + dur);
+  // Pitched "pop" body — sine that drops fast
+  const osc = audioCtx.createOscillator();
+  osc.type = 'sine';
+  osc.frequency.setValueAtTime(900 + Math.random() * 200, t0);
+  osc.frequency.exponentialRampToValueAtTime(120, t0 + 0.12);
   const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(0.16, t0 + 0.015);
-  g.gain.linearRampToValueAtTime(0.12, t0 + dur * 0.5);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
-  src.connect(hp); hp.connect(g); g.connect(audioCtx.destination);
-  src.start(t0); src.stop(t0 + dur + 0.01);
+  g.gain.setValueAtTime(0.20, t0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
+  osc.connect(g); g.connect(audioCtx.destination);
+  osc.start(t0); osc.stop(t0 + 0.20);
+  // Tiny noise transient at the attack for the "p" of the pop
+  const nLen = audioCtx.sampleRate * 0.03 | 0;
+  const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+  const nd = nBuf.getChannelData(0);
+  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
+  const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+  const hp = audioCtx.createBiquadFilter();
+  hp.type = 'highpass'; hp.frequency.value = 2000; hp.Q.value = 0.5;
+  const nG = audioCtx.createGain();
+  nG.gain.setValueAtTime(0.15, t0);
+  nG.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.025);
+  nSrc.connect(hp); hp.connect(nG); nG.connect(audioCtx.destination);
+  nSrc.start(t0); nSrc.stop(t0 + 0.035);
 }
 
 // Sharp collective intake of breath
@@ -2750,6 +2755,7 @@ function handleInputDown(e) {
       perf       = makeNewPair();
       transPhase = 'entering';
       transT     = 0;
+      firePop();
     } else if (openState === 'playing') {
       startTransition();
     }
@@ -2758,6 +2764,7 @@ function handleInputDown(e) {
     if (openState === 'closed') {
       openState = 'opening';
       openT     = 0;
+      fireWhoosh();
     } else {
       startSceneTransition();
     }
