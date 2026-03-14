@@ -1337,6 +1337,7 @@ const AUDIENCE = (() => {
       swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.3 + rnd(0, 0.18),
       swayAmp: 0.030 + rnd(0, 0.020),
       personality: bp1[i],
+      tone: Math.random() < 0.35 ? 0.3 + Math.random() * 0.4 : 0,
       tilt: 0, yShift: 0, xShift: 0,
       reaction: null, gone: false,
     });
@@ -1354,6 +1355,7 @@ const AUDIENCE = (() => {
       swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.28 + rnd(0, 0.18),
       swayAmp: 0.025 + rnd(0, 0.018),
       personality: bp2[i],
+      tone: Math.random() < 0.35 ? 0.3 + Math.random() * 0.4 : 0,
       tilt: 0, yShift: 0, xShift: 0,
       reaction: null, gone: false,
     });
@@ -1368,6 +1370,7 @@ const AUDIENCE = (() => {
       swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.25 + rnd(0, 0.10),
       swayAmp: 0.022 + rnd(0, 0.012),
       personality: i === 2 ? 'emotional' : 'attentive',
+      tone: Math.random() < 0.35 ? 0.3 + Math.random() * 0.4 : 0,
       tilt: 0, yShift: 0, xShift: 0,
       reaction: null, gone: false,
     });
@@ -1382,6 +1385,7 @@ const AUDIENCE = (() => {
       swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.25 + rnd(0, 0.10),
       swayAmp: 0.022 + rnd(0, 0.012),
       personality: i === 3 ? 'sleepy' : 'attentive',
+      tone: Math.random() < 0.35 ? 0.3 + Math.random() * 0.4 : 0,
       tilt: 0, yShift: 0, xShift: 0,
       reaction: null, gone: false,
     });
@@ -1803,7 +1807,12 @@ function drawAudience(ts, group) {
       traceProfileShape(PROF_VARS[m.variant]);
     }
 
-    ctx.fillStyle = '#342c22';
+    // Base fill with per-member tone variation
+    const b = m.tone || 0;
+    const r = 0x34 + Math.round(b * 0x28) | 0;
+    const g = 0x2c + Math.round(b * 0x20) | 0;
+    const bl = 0x22 + Math.round(b * 0x18) | 0;
+    ctx.fillStyle = `rgb(${r},${g},${bl})`;
     ctx.fill();
 
     const v = m.type === 'back' ? BACK_VARS[m.variant] : PROF_VARS[m.variant];
