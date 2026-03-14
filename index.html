@@ -1437,18 +1437,18 @@ function spawnSideCues(text) {
   for (const c of audienceCues) {
     if (c.phase !== 'exiting') { c.phase = 'exiting'; c.phaseT = 0; }
   }
-  // Left side
+  // Left side — slightly higher
   audienceCues.push({
     text, phase: 'entering', phaseT: 0,
-    x: 55 + (Math.random() - 0.5) * 20, y: 190 + Math.random() * 10,
-    rotation: (Math.random() - 0.5) * 0.04,
+    x: 50 + (Math.random() - 0.5) * 20, y: 185 + Math.random() * 10,
+    rotation: -0.03 + (Math.random() - 0.5) * 0.03,
     pulse: true,
   });
-  // Right side
+  // Right side — slightly lower and offset
   audienceCues.push({
     text, phase: 'entering', phaseT: 0,
-    x: 585 + (Math.random() - 0.5) * 20, y: 190 + Math.random() * 10,
-    rotation: (Math.random() - 0.5) * 0.04,
+    x: 590 + (Math.random() - 0.5) * 20, y: 200 + Math.random() * 10,
+    rotation: 0.02 + (Math.random() - 0.5) * 0.03,
     pulse: true,
   });
 }
@@ -1638,7 +1638,7 @@ function fireChantPulses(syllables, reps) {
   if (!audioCtx) return;
   const t0 = audioCtx.currentTime;
   for (let rep = 0; rep < reps; rep++) {
-    const base = rep * 0.55;
+    const base = rep * 0.75;
     for (let s = 0; s < syllables.length; s++) {
       const syl = syllables[s];
       const offset = base + s * 0.20;
@@ -1674,10 +1674,10 @@ function fireChantPulses(syllables, reps) {
 
 function fireBoneyChant() {
   boneyChantTriggered = true;
-  spawnSideCues('Bo-ney!  Bo-ney!  Bo-ney!');
+  spawnSideCues('Bone-eeey!');
   fireChantPulses([
-    { freq: 140, formant: 500, vol: 0.14, dur: 0.18 },
-    { freq: 210, freqEnd: 190, formant: 700, vol: 0.16, dur: 0.25 },
+    { freq: 140, formant: 500, vol: 0.14, dur: 0.22 },
+    { freq: 210, freqEnd: 180, formant: 700, vol: 0.16, dur: 0.35 },
   ], 3);
   for (const m of AUDIENCE) {
     if (m.gone || Math.random() > 0.75) continue;
@@ -1687,12 +1687,11 @@ function fireBoneyChant() {
 
 function fireHagBoo() {
   hagChantTriggered = true;
-  spawnSideCues('Booo  Haaaag!');
-  // Lower, longer, more menacing
+  spawnSideCues('Haaaag!');
   fireChantPulses([
-    { freq: 110, freqEnd: 100, formant: 400, vol: 0.16, dur: 0.25 },
-    { freq: 165, freqEnd: 140, formant: 550, vol: 0.18, dur: 0.30 },
-  ], 2);
+    { freq: 110, freqEnd: 95, formant: 400, vol: 0.16, dur: 0.30 },
+    { freq: 165, freqEnd: 130, formant: 550, vol: 0.18, dur: 0.40 },
+  ], 3);
   for (const m of AUDIENCE) {
     if (m.gone || Math.random() > 0.65) continue;
     m.reaction = { type: 'lean-back', delay: Math.random() * 0.3, elapsed: 0 };
@@ -1748,7 +1747,7 @@ function updateAudience(dt) {
   for (const c of audienceCues) {
     c.phaseT += dt;
     if (c.phase === 'entering' && c.phaseT >= 0.3) { c.phase = 'holding'; c.phaseT = 0; }
-    if (c.phase === 'holding' && c.phaseT >= (c.pulse ? 3.0 : 1.8)) { c.phase = 'exiting'; c.phaseT = 0; }
+    if (c.phase === 'holding' && c.phaseT >= (c.pulse ? 3.6 : 1.8)) { c.phase = 'exiting'; c.phaseT = 0; }
     if (c.phase === 'exiting' && c.phaseT >= 0.5) { c.phase = 'gone'; }
   }
   audienceCues = audienceCues.filter(c => c.phase !== 'gone');
@@ -1835,8 +1834,8 @@ function drawAudienceCues() {
     // Pulse effect: 3 fade-in/fade-out throbs during hold phase
     let scale = 1.0;
     if (c.pulse && c.phase === 'holding') {
-      // 3 pulses over 3.0s: each ~1.0s with fade-in, peak, fade-out
-      const cycle = (c.phaseT % 1.0) / 1.0; // 0→1 per pulse
+      // 3 pulses over 3.6s: each ~1.2s with fade-in, peak, fade-out
+      const cycle = (c.phaseT % 1.2) / 1.2; // 0→1 per pulse
       const wave = Math.sin(cycle * Math.PI); // 0→1→0 smooth
       alpha = 0.85 * wave;
       scale = 1.0 + 0.12 * wave;
@@ -2041,13 +2040,20 @@ function fireWhoosh() {
   src.start(t0); src.stop(t0 + dur + 0.01);
 }
 
-// Character change pop — bright kalimba chord in the music box register
+// Character change chime — two alternating harmonious variants
+let popVariant = 0;
 function firePop() {
   if (!audioCtx) return;
-  // Two high notes from the D Phrygian scale, quick staccato
-  const notes = [698.46, 880.00]; // F5 and A5
-  pluckNote(notes[0], 0.20, 0);
-  pluckNote(notes[1], 0.16, 0.04);
+  if (popVariant === 0) {
+    // Rising fifth: F5 → A5
+    pluckNote(698.46, 0.20, 0);
+    pluckNote(880.00, 0.16, 0.04);
+  } else {
+    // Falling fourth: E5 → D5 (bright then warm)
+    pluckNote(622.25, 0.18, 0);
+    pluckNote(523.25, 0.20, 0.05);
+  }
+  popVariant = 1 - popVariant;
 }
 
 // Sharp collective intake of breath
@@ -2530,6 +2536,12 @@ function drawPuppet(p, yOffset, alpha, cardTint) {
   const MIN_CARD_SCALE = 0.15;
   const sign     = Math.sign(rawScale) || 1;
   let   scaleX   = sign * Math.max(Math.abs(rawScale), MIN_CARD_SCALE);
+
+  // During entering transition, face the audience so characters are recognizable
+  if (transPhase === 'entering') {
+    const faceSign = (pos[0] < 320) ? -1 : 1;
+    scaleX = faceSign * (Math.abs(scaleX) + (1 - Math.abs(scaleX)) * (1 - transT));
+  }
 
   // During bow, face forward (toward viewer)
   if (bowActive && bowTargets[puppetIdx] && bowT >= BOW_GLIDE_DUR) {
