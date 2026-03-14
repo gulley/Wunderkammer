@@ -1386,7 +1386,11 @@ const MOOD_AUD = {
   farewell:  { types: ['lean-fwd'],         chance: 0.45 },
 };
 
-// --- Audience cue cards (stage-direction text below the stage) ---
+// --- Audience fade-in ---
+let audienceFade = 0;       // 0 = invisible, 1 = fully visible
+let audienceRevealed = false; // true once crank has been turned at least once
+
+// --- Audience cue cards (stage-direction text below the audience) ---
 const AUD_CUE_TEXT = {
   greeting:  ['Polite Applause', 'Murmuring'],
   boast:     ['Ooh!', 'Impressed Whispers'],
@@ -1407,7 +1411,7 @@ function spawnAudienceCue(text) {
   }
   audienceCues.push({
     text, phase: 'entering', phaseT: 0,
-    x: 320 + (Math.random() - 0.5) * 80, y: 464,
+    x: 320 + (Math.random() - 0.5) * 80, y: 508,
     rotation: (Math.random() - 0.5) * 0.025,
   });
 }
@@ -1415,6 +1419,10 @@ function spawnAudienceCue(text) {
 // --- Bravo floats + ovation ---
 let bravoFloats = [];
 let ovationTriggered = false;
+let stageFlowers = [];
+
+const FLOWER_GLYPHS = ['✿', '❀', '✾', '❁', '✽', '❃'];
+const FLOWER_COLORS = ['#c4565a', '#d4899a', '#e8c85a', '#e8a85a', '#ca82ca', '#fff8e0'];
 
 function triggerFullOvation() {
   for (const m of AUDIENCE) {
@@ -1435,7 +1443,30 @@ function triggerFullOvation() {
       y: am.type === 'back' ? am.y - 25 : am.y - 15,
       vy: -18 - Math.random() * 15, vx: (Math.random() - 0.5) * 10,
       life: i * 0.3, maxLife: 3.0 + Math.random() * 1.5,
-      size: 11 + Math.random() * 3, rot: (Math.random() - 0.5) * 0.15,
+      size: 13 + Math.random() * 4, rot: (Math.random() - 0.5) * 0.15,
+    });
+  }
+  // Throw flowers onto the stage!
+  for (let i = 0; i < 12; i++) {
+    const thrower = AUDIENCE[Math.floor(Math.random() * AUDIENCE.length)];
+    if (thrower.gone) continue;
+    // Target: random point on the stage top surface
+    const ts = 0.2 + Math.random() * 0.6;  // s (left-right on stage)
+    const tt = 0.3 + Math.random() * 0.5;  // t (front-back on stage)
+    const landing = topPt(ts, tt);
+    stageFlowers.push({
+      x: thrower.x,
+      y: thrower.type === 'back' ? thrower.y - 20 : thrower.y - 10,
+      targetX: landing[0], targetY: landing[1],
+      t: 0, dur: 0.6 + Math.random() * 0.5,
+      delay: i * 0.12 + Math.random() * 0.3,
+      glyph: FLOWER_GLYPHS[Math.floor(Math.random() * FLOWER_GLYPHS.length)],
+      color: FLOWER_COLORS[Math.floor(Math.random() * FLOWER_COLORS.length)],
+      size: 10 + Math.random() * 6,
+      rot: Math.random() * Math.PI * 2,
+      spin: (Math.random() - 0.5) * 4,
+      landed: false,
+      landedAlpha: 1.0,
     });
   }
 }
@@ -1509,7 +1540,10 @@ function resetAudience() {
   }
   audienceCues = [];
   bravoFloats = [];
+  stageFlowers = [];
   ovationTriggered = false;
+  audienceFade = 0;
+  audienceRevealed = false;
 }
 
 function updateAudience(dt) {
@@ -1574,10 +1608,31 @@ function updateAudience(dt) {
     b.vy *= 0.97;
   }
   bravoFloats = bravoFloats.filter(b => b.life < b.maxLife);
+
+  // Update stage flowers (parabolic arcs, then rest on stage)
+  for (const f of stageFlowers) {
+    if (f.landed) {
+      f.landedAlpha = Math.max(0, f.landedAlpha - dt * 0.04); // very slow fade
+      continue;
+    }
+    if (f.delay > 0) { f.delay -= dt; continue; }
+    f.t += dt / f.dur;
+    if (f.t >= 1) { f.t = 1; f.landed = true; }
+    f.rot += f.spin * dt;
+  }
+  stageFlowers = stageFlowers.filter(f => !f.landed || f.landedAlpha > 0.01);
+
+  // Audience fade-in
+  if (audienceRevealed && audienceFade < 1) {
+    audienceFade = Math.min(1, audienceFade + dt * 0.5);
+  }
 }
 
 function drawAudience(ts, group) {
+  if (audienceFade < 0.01) return;
   const t = ts * 0.001;
+  ctx.save();
+  ctx.globalAlpha = audienceFade;
   for (const m of AUDIENCE) {
     if (m.gone) continue;
     if (group === 'sides' && m.type !== 'profile') continue;
@@ -1612,6 +1667,7 @@ function drawAudience(ts, group) {
 
     ctx.restore();
   }
+  ctx.restore();
 }
 
 function drawAudienceCues() {
@@ -1627,7 +1683,7 @@ function drawAudienceCues() {
     ctx.globalAlpha = alpha;
     ctx.translate(c.x, c.y);
     ctx.rotate(c.rotation);
-    ctx.font = 'italic 11px Georgia, "Times New Roman", serif';
+    ctx.font = 'italic 15px Georgia, "Times New Roman", serif';
     ctx.fillStyle = '#c8b898';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -1654,6 +1710,38 @@ function drawBravoFloats() {
   }
 }
 
+function drawStageFlowers() {
+  for (const f of stageFlowers) {
+    if (f.delay > 0) continue;
+    let x, y, alpha;
+    if (!f.landed) {
+      // Parabolic arc from thrower to stage
+      const p = f.t;
+      const ep = p * p * (3 - 2 * p); // smoothstep
+      x = f.x + (f.targetX - f.x) * ep;
+      // Arc height: peaks at midpoint, proportional to distance
+      const arcH = -80 - Math.abs(f.targetX - f.x) * 0.15;
+      y = f.y + (f.targetY - f.y) * ep + arcH * 4 * p * (1 - p);
+      alpha = 0.9;
+    } else {
+      x = f.targetX;
+      y = f.targetY;
+      alpha = f.landedAlpha * 0.8;
+    }
+    if (alpha < 0.01) continue;
+    ctx.save();
+    ctx.globalAlpha = alpha;
+    ctx.translate(x, y);
+    ctx.rotate(f.rot);
+    ctx.font = f.size + 'px serif';
+    ctx.fillStyle = f.color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(f.glyph, 0, 0);
+    ctx.restore();
+  }
+}
+
 // --- Audience sounds ---
 
 function fireAudienceMurmur() {
@@ -1668,8 +1756,8 @@ function fireAudienceMurmur() {
   bp.type = 'bandpass'; bp.frequency.value = 450; bp.Q.value = 0.6;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(0.14, t0 + 0.04);
-  g.gain.linearRampToValueAtTime(0.10, t0 + 0.20);
+  g.gain.linearRampToValueAtTime(0.20, t0 + 0.04);
+  g.gain.linearRampToValueAtTime(0.14, t0 + 0.20);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.38);
   src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
   src.start(t0); src.stop(t0 + 0.42);
@@ -1687,7 +1775,7 @@ function fireAudienceCough(delay) {
   bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 1.0;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(0.18, t0 + 0.006);
+  g.gain.linearRampToValueAtTime(0.25, t0 + 0.006);
   g.gain.exponentialRampToValueAtTime(0.04, t0 + 0.04);
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
   src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
@@ -1697,43 +1785,59 @@ function fireAudienceCough(delay) {
 function fireAudienceApplause() {
   if (!audioCtx) return;
   const t0 = audioCtx.currentTime;
-  for (let i = 0; i < 35; i++) {
-    const delay = 0.05 + Math.random() * 1.6;
-    const envelope = delay < 0.8 ? delay / 0.8 : Math.max(0.15, 2 * (1 - delay / 1.7));
-    const vol = (0.05 + Math.random() * 0.05) * envelope;
-    const dur = 0.015 + Math.random() * 0.012;
+  // Layer 1: many rapid individual claps (sharp transients)
+  for (let i = 0; i < 65; i++) {
+    const delay = 0.03 + Math.random() * 2.2;
+    const envelope = delay < 1.0 ? delay / 1.0 : Math.max(0.2, 2.5 * (1 - delay / 2.3));
+    const vol = (0.06 + Math.random() * 0.06) * envelope;
+    const dur = 0.012 + Math.random() * 0.015;
     const len = audioCtx.sampleRate * dur | 0;
     const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
     const d = buf.getChannelData(0);
     for (let j = 0; j < d.length; j++) d[j] = Math.random() * 2 - 1;
     const src = audioCtx.createBufferSource(); src.buffer = buf;
     const hp = audioCtx.createBiquadFilter();
-    hp.type = 'highpass'; hp.frequency.value = 1800; hp.Q.value = 0.4;
+    hp.type = 'highpass'; hp.frequency.value = 1200 + Math.random() * 1200; hp.Q.value = 0.3 + Math.random() * 0.4;
     const g = audioCtx.createGain();
     g.gain.setValueAtTime(vol, t0 + delay);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + delay + dur);
     src.connect(hp); hp.connect(g); g.connect(audioCtx.destination);
     src.start(t0 + delay); src.stop(t0 + delay + dur + 0.01);
   }
+  // Layer 2: underlying crowd wash (bandpass noise for body)
+  const washLen = audioCtx.sampleRate * 2.5 | 0;
+  const washBuf = audioCtx.createBuffer(1, washLen, audioCtx.sampleRate);
+  const wd = washBuf.getChannelData(0);
+  for (let i = 0; i < wd.length; i++) wd[i] = Math.random() * 2 - 1;
+  const washSrc = audioCtx.createBufferSource(); washSrc.buffer = washBuf;
+  const washBP = audioCtx.createBiquadFilter();
+  washBP.type = 'bandpass'; washBP.frequency.value = 800; washBP.Q.value = 0.3;
+  const washG = audioCtx.createGain();
+  washG.gain.setValueAtTime(0, t0);
+  washG.gain.linearRampToValueAtTime(0.10, t0 + 0.3);
+  washG.gain.linearRampToValueAtTime(0.08, t0 + 1.5);
+  washG.gain.exponentialRampToValueAtTime(0.0001, t0 + 2.3);
+  washSrc.connect(washBP); washBP.connect(washG); washG.connect(audioCtx.destination);
+  washSrc.start(t0); washSrc.stop(t0 + 2.5);
 }
 
 function fireAudienceCheer() {
   if (!audioCtx) return;
   const t0 = audioCtx.currentTime;
-  const len = audioCtx.sampleRate * 1.5 | 0;
+  const len = audioCtx.sampleRate * 2.0 | 0;
   const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   const src = audioCtx.createBufferSource(); src.buffer = buf;
   const bp = audioCtx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = 600; bp.Q.value = 0.4;
+  bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 0.35;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(0.15, t0 + 0.2);
-  g.gain.linearRampToValueAtTime(0.12, t0 + 0.8);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.4);
+  g.gain.linearRampToValueAtTime(0.22, t0 + 0.25);
+  g.gain.linearRampToValueAtTime(0.18, t0 + 1.0);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
   src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
-  src.start(t0); src.stop(t0 + 1.5);
+  src.start(t0); src.stop(t0 + 2.0);
 }
 
 // =============================================================================
@@ -2422,6 +2526,9 @@ function draw(ts) {
     drawPuppet(p, yOff, alpha, tint);
   }
 
+  // Flowers landing on stage (drawn above stage surface, below lid/front face)
+  drawStageFlowers();
+
   // Lid rotates open like a laptop, revealing backdrop on inside face
   if (openState === 'closed') drawLid(0);
   else if (openState === 'opening') drawLid(openT);
@@ -2474,6 +2581,7 @@ function handleInputDown(e) {
 
   if (isEnabled('crank') && inCircle(x, y, AXLE[0], AXLE[1])) {
     running = true; lastT = null;
+    if (!audienceRevealed) audienceRevealed = true;
     if (noteTimer <= 0) noteTimer = 0.05;
 
   } else if (isEnabled('pick') && inCircle(x, y, PICK_BTN[0], PICK_BTN[1])) {
