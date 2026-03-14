@@ -324,6 +324,7 @@ function startTransition() {
   for (const c of cueCards) { c.phase = 'exiting'; c.phaseT = 0; }
   emotionParticles = [];
   resetAudience();
+  fireZip();
 }
 
 // =============================================================================
@@ -354,6 +355,7 @@ function startSceneTransition() {
   for (const c of cueCards) { c.phase = 'exiting'; c.phaseT = 0; }
   emotionParticles = [];
   resetAudience();
+  fireWhoosh();
 }
 
 function sceneYOffset() {
@@ -1871,6 +1873,54 @@ function fireAudienceCheer() {
   g.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.8);
   src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
   src.start(t0); src.stop(t0 + 2.0);
+}
+
+// Backdrop change whoosh — swept bandpass noise, low-to-high
+function fireWhoosh() {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const dur = 0.45;
+  const len = audioCtx.sampleRate * dur | 0;
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.Q.value = 1.2;
+  bp.frequency.setValueAtTime(200, t0);
+  bp.frequency.exponentialRampToValueAtTime(3000, t0 + dur * 0.6);
+  bp.frequency.exponentialRampToValueAtTime(800, t0 + dur);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(0.18, t0 + 0.05);
+  g.gain.linearRampToValueAtTime(0.14, t0 + dur * 0.4);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
+  src.start(t0); src.stop(t0 + dur + 0.01);
+}
+
+// Character change zip — rising high-pass filtered noise burst
+function fireZip() {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const dur = 0.28;
+  const len = audioCtx.sampleRate * dur | 0;
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const hp = audioCtx.createBiquadFilter();
+  hp.type = 'highpass'; hp.Q.value = 2.0;
+  hp.frequency.setValueAtTime(800, t0);
+  hp.frequency.exponentialRampToValueAtTime(6000, t0 + dur * 0.7);
+  hp.frequency.exponentialRampToValueAtTime(3000, t0 + dur);
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(0.16, t0 + 0.015);
+  g.gain.linearRampToValueAtTime(0.12, t0 + dur * 0.5);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+  src.connect(hp); hp.connect(g); g.connect(audioCtx.destination);
+  src.start(t0); src.stop(t0 + dur + 0.01);
 }
 
 // Sharp collective intake of breath
