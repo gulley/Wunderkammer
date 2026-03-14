@@ -1402,15 +1402,15 @@ const AUD_REACTIONS = {
 };
 
 const MOOD_AUD = {
-  greeting:  { types: ['lean-fwd'],        chance: 0.45 },
-  boast:     { types: ['lean-back'],        chance: 0.50 },
-  conflict:  { types: ['lean-fwd', 'jolt'], chance: 0.65 },
-  devotion:  { types: ['lean-back'],        chance: 0.50 },
-  despair:   { types: ['lean-back'],        chance: 0.55 },
-  madness:   { types: ['jolt'],             chance: 0.70 },
-  prophecy:  { types: ['lean-fwd'],         chance: 0.55 },
-  triumph:   { types: ['lean-fwd', 'jolt'], chance: 0.65 },
-  farewell:  { types: ['lean-fwd'],         chance: 0.45 },
+  greeting:  { types: ['lean-fwd'],        chance: 0.60 },
+  boast:     { types: ['lean-back'],        chance: 0.65 },
+  conflict:  { types: ['lean-fwd', 'jolt'], chance: 0.80 },
+  devotion:  { types: ['lean-back'],        chance: 0.65 },
+  despair:   { types: ['lean-back'],        chance: 0.70 },
+  madness:   { types: ['jolt'],             chance: 0.85 },
+  prophecy:  { types: ['lean-fwd'],         chance: 0.70 },
+  triumph:   { types: ['lean-fwd', 'jolt'], chance: 0.80 },
+  farewell:  { types: ['lean-fwd'],         chance: 0.60 },
 };
 
 // --- Audience fade-in ---
@@ -1560,7 +1560,7 @@ function triggerAudienceReaction(beat) {
   if (beat.type === 'act-title') {
     const rt = beat.act >= 2 ? 'stand-brief' : 'restless';
     for (const m of AUDIENCE) {
-      if (m.gone || Math.random() > 0.70) continue;
+      if (m.gone || Math.random() > 0.85) continue;
       m.reaction = { type: rt, delay: Math.random() * 0.3, elapsed: 0,
         xTarget: rt === 'restless' ? (Math.random() - 0.5) * 8 : 0 };
     }
@@ -1588,25 +1588,25 @@ function triggerAudienceReaction(beat) {
       const type = ma.types[Math.floor(Math.random() * ma.types.length)];
       m.reaction = { type, delay: 0.15 + Math.random() * 0.4, elapsed: 0 };
     }
-    if (Math.random() < 0.40) {
+    if (Math.random() < 0.60) {
       const pool = AUD_CUE_TEXT[beat.mood];
       if (pool) spawnAudienceCue(pool[Math.floor(Math.random() * pool.length)]);
     }
     // Mood-specific sounds
     const moodSound = {
-      greeting: () => { if (Math.random() < 0.35) fireAudienceMurmur(); },
-      boast:    () => { if (Math.random() < 0.30) fireAudienceMurmur();
-                        if (Math.random() < 0.15) fireAudienceShout(); },
-      conflict: () => { if (Math.random() < 0.50) fireAudienceGasp(); },
-      devotion: () => { if (Math.random() < 0.45) fireAudienceSigh(); },
-      despair:  () => { if (Math.random() < 0.40) fireAudienceSigh(); },
-      madness:  () => { if (Math.random() < 0.50) fireAudienceGasp();
-                        if (Math.random() < 0.10) fireAudienceShout(); },
+      greeting: () => { if (Math.random() < 0.55) fireAudienceMurmur(); },
+      boast:    () => { if (Math.random() < 0.50) fireAudienceMurmur();
+                        if (Math.random() < 0.30) fireAudienceShout(); },
+      conflict: () => { if (Math.random() < 0.70) fireAudienceGasp(); },
+      devotion: () => { if (Math.random() < 0.65) fireAudienceSigh(); },
+      despair:  () => { if (Math.random() < 0.60) fireAudienceSigh(); },
+      madness:  () => { if (Math.random() < 0.70) fireAudienceGasp();
+                        if (Math.random() < 0.25) fireAudienceShout(); },
       prophecy: () => { /* silence — a hush */ },
-      triumph:  () => { if (Math.random() < 0.40) fireAudienceShout();
-                        if (Math.random() < 0.25) fireAudienceApplause(); },
-      farewell: () => { if (Math.random() < 0.40) fireAudienceSigh();
-                        if (Math.random() < 0.15) fireAudienceCough(0.3); },
+      triumph:  () => { if (Math.random() < 0.60) fireAudienceShout();
+                        if (Math.random() < 0.40) fireAudienceApplause(); },
+      farewell: () => { if (Math.random() < 0.60) fireAudienceSigh();
+                        if (Math.random() < 0.25) fireAudienceCough(0.3); },
     };
     const fn = moodSound[beat.mood];
     if (fn) fn();
