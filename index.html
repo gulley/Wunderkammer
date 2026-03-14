@@ -319,6 +319,7 @@ function startTransition() {
   playBeatIdx = -1;
   for (const c of cueCards) { c.phase = 'exiting'; c.phaseT = 0; }
   emotionParticles = [];
+  resetAudience();
 }
 
 // =============================================================================
@@ -348,6 +349,7 @@ function startSceneTransition() {
   playBeatIdx = -1;
   for (const c of cueCards) { c.phase = 'exiting'; c.phaseT = 0; }
   emotionParticles = [];
+  resetAudience();
 }
 
 function sceneYOffset() {
@@ -887,6 +889,7 @@ function activateBeat(beat) {
     phaseT:   0,
     rotation: (Math.random() - 0.5) * 0.035,
   });
+  triggerAudienceReaction(beat);
 }
 
 let suffusion = { mood: null, intensity: 0, speakerIdx: -1 };
@@ -953,6 +956,7 @@ function startPlay() {
   emotionParticles = [];
   playEnded      = false;
   windDown       = 1.0;
+  resetAudience();
 }
 
 // --- Emotion glyph particles ---
@@ -1185,6 +1189,403 @@ function drawWoodGrain(pts, alpha) {
   ctx.globalCompositeOperation = 'multiply';
   ctx.drawImage(woodCanvas, 0, 0);
   ctx.restore();
+}
+
+// =============================================================================
+// AUDIENCE — silhouette spectators surrounding the stage
+// =============================================================================
+
+// Back-of-head shape variants. Center-bottom = (0,0), y grows upward (negative).
+// sw=shoulder half-w, sh=shoulder rise, nw=neck half-w, nh=neck rise,
+// hw=head half-w, hh=head rise, crown=optional accessory
+const BACK_VARS = [
+  { sw:13, sh:9, nw:5, nh:4, hw:8,  hh:12, crown:null },      // standard
+  { sw:10, sh:9, nw:4, nh:5, hw:6,  hh:15, crown:null },      // tall & thin
+  { sw:16, sh:8, nw:6, nh:3, hw:10, hh:10, crown:null },      // broad & stocky
+  { sw:12, sh:9, nw:5, nh:4, hw:7,  hh:12, crown:'bun' },    // hair bun
+  { sw:13, sh:9, nw:5, nh:3, hw:8,  hh:10, crown:'hat' },    // bowler hat
+  { sw:12, sh:8, nw:5, nh:4, hw:9,  hh:13, crown:'frizzy' }, // frizzy hair
+  { sw:10, sh:7, nw:4, nh:3, hw:6,  hh:9,  crown:null },     // small & compact
+];
+
+// Profile variants. All face right; caller flips for left-facing.
+const PROF_VARS = [
+  { nose:5,   brow:2.5, chin:2.5, backHead:8, headH:14, neckL:3, bodyW:10, bodyH:14 },
+  { nose:7,   brow:3.5, chin:1.5, backHead:7, headH:15, neckL:3, bodyW:9,  bodyH:13 },
+  { nose:3,   brow:1.5, chin:3,   backHead:9, headH:13, neckL:3, bodyW:11, bodyH:14, crown:'bun' },
+  { nose:5.5, brow:4,   chin:2,   backHead:7, headH:16, neckL:4, bodyW:9,  bodyH:15 },
+];
+
+// Trace back-of-head outline. Assumes ctx is translated/scaled by caller.
+function traceBackShape(v) {
+  const { sw, sh, nw, nh, hw, hh, crown } = v;
+  const nb = sh + nh;
+  const ht = nb + hh;
+  ctx.beginPath();
+  ctx.moveTo(-sw, 0);
+  ctx.lineTo(-sw, -sh);
+  ctx.quadraticCurveTo(-nw - 1, -sh - 1, -nw, -sh - 2);
+  ctx.lineTo(-nw, -nb);
+  ctx.quadraticCurveTo(-hw - 1, -nb, -hw, -nb - hh * 0.4);
+  if (crown === 'frizzy') {
+    ctx.quadraticCurveTo(-hw - 2, -ht + 2, -hw * 0.5, -ht - 2);
+    ctx.lineTo(-hw * 0.15, -ht);
+    ctx.quadraticCurveTo(0, -ht - 3, hw * 0.15, -ht);
+    ctx.lineTo(hw * 0.5, -ht - 2);
+    ctx.quadraticCurveTo(hw + 2, -ht + 2, hw, -nb - hh * 0.4);
+  } else {
+    ctx.quadraticCurveTo(-hw, -ht, 0, -ht);
+    ctx.quadraticCurveTo(hw, -ht, hw, -nb - hh * 0.4);
+  }
+  ctx.quadraticCurveTo(hw + 1, -nb, nw, -nb);
+  ctx.lineTo(nw, -sh - 2);
+  ctx.quadraticCurveTo(nw + 1, -sh - 1, sw, -sh);
+  ctx.lineTo(sw, 0);
+  ctx.closePath();
+  if (crown === 'bun') {
+    ctx.moveTo(4.5, -ht - 1);
+    ctx.arc(0, -ht - 1, 4.5, 0, Math.PI * 2);
+  }
+  if (crown === 'hat') {
+    const bw = hw + 3;
+    ctx.moveTo(-bw, -ht); ctx.lineTo(-bw, -ht - 2.5);
+    ctx.lineTo(bw, -ht - 2.5); ctx.lineTo(bw, -ht); ctx.closePath();
+    ctx.moveTo(-hw + 2, -ht - 2.5); ctx.lineTo(-hw + 2, -ht - 10);
+    ctx.quadraticCurveTo(-hw + 2, -ht - 13, 0, -ht - 13);
+    ctx.quadraticCurveTo(hw - 2, -ht - 13, hw - 2, -ht - 10);
+    ctx.lineTo(hw - 2, -ht - 2.5); ctx.closePath();
+  }
+}
+
+// Trace profile silhouette facing right. Caller uses ctx.scale(-1,1) for left.
+function traceProfileShape(v) {
+  const { nose, brow, chin, backHead, headH, neckL, bodyW, bodyH, crown } = v;
+  const top = bodyH + neckL + headH;
+  const ny  = bodyH + neckL;
+  const hm  = ny + headH * 0.5;
+  ctx.beginPath();
+  ctx.moveTo(-bodyW / 2, 0);
+  ctx.lineTo(-bodyW / 2, -bodyH);
+  ctx.quadraticCurveTo(-bodyW / 3, -bodyH - 2, -bodyW / 4, -bodyH - 2);
+  ctx.lineTo(-bodyW / 4, -ny);
+  ctx.quadraticCurveTo(-backHead, -ny, -backHead, -hm);
+  ctx.quadraticCurveTo(-backHead, -top, 0, -top);
+  ctx.lineTo(brow * 0.5, -top + 2);
+  ctx.lineTo(brow, -top + headH * 0.25);
+  ctx.lineTo(brow - 0.5, -top + headH * 0.35);
+  ctx.lineTo(nose, -top + headH * 0.5);
+  ctx.lineTo(nose - 2, -top + headH * 0.56);
+  ctx.lineTo(chin * 0.5, -top + headH * 0.62);
+  ctx.quadraticCurveTo(chin, -top + headH * 0.85, chin - 1, -ny + 1);
+  ctx.lineTo(bodyW / 4, -ny);
+  ctx.lineTo(bodyW / 4, -bodyH - 1);
+  ctx.quadraticCurveTo(bodyW / 3, -bodyH, bodyW / 2, -bodyH);
+  ctx.lineTo(bodyW / 2, 0);
+  ctx.closePath();
+  if (crown === 'bun') {
+    ctx.moveTo(-backHead - 1 + 3.5, -hm - 2);
+    ctx.arc(-backHead - 1, -hm - 2, 3.5, 0, Math.PI * 2);
+  }
+}
+
+// --- Generate audience members ---
+const AUDIENCE = (() => {
+  const m = [];
+  const rnd = (a, b) => a + Math.random() * (b - a);
+
+  // Bottom row: 6 figures, partially below canvas edge
+  const bx = [95, 180, 275, 350, 445, 540];
+  const bv = [0, 1, 3, 2, 5, 4];  // variant indices — max visual diversity
+  const bp = ['attentive', 'attentive', 'sleepy', 'attentive', 'fidgety', 'emotional'];
+  for (let i = 0; i < 6; i++) {
+    m.push({
+      x: bx[i] + rnd(-8, 8),  y: 518 + rnd(-4, 6),
+      type: 'back', variant: bv[i],
+      scale: 0.88 + rnd(0, 0.22),
+      swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.3 + rnd(0, 0.18),
+      swayAmp: 0.012 + rnd(0, 0.008),
+      personality: bp[i],
+      tilt: 0, yShift: 0, xShift: 0,
+      reaction: null, gone: false,
+    });
+  }
+
+  // Left profiles: 2 figures in the dark area left of the backdrop
+  for (let i = 0; i < 2; i++) {
+    m.push({
+      x: 40 + rnd(0, 35), y: 270 + i * 38 + rnd(-5, 5),
+      type: 'profile', facing: 1, variant: i,
+      scale: 0.62 + rnd(0, 0.10),
+      swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.25 + rnd(0, 0.10),
+      swayAmp: 0.008 + rnd(0, 0.005),
+      personality: 'attentive',
+      tilt: 0, yShift: 0, xShift: 0,
+      reaction: null, gone: false,
+    });
+  }
+
+  // Right profiles: 2 figures in the dark area right of the backdrop
+  for (let i = 0; i < 2; i++) {
+    m.push({
+      x: 565 + rnd(0, 35), y: 270 + i * 38 + rnd(-5, 5),
+      type: 'profile', facing: -1, variant: i + 2,
+      scale: 0.62 + rnd(0, 0.10),
+      swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.25 + rnd(0, 0.10),
+      swayAmp: 0.008 + rnd(0, 0.005),
+      personality: 'attentive',
+      tilt: 0, yShift: 0, xShift: 0,
+      reaction: null, gone: false,
+    });
+  }
+
+  return m;
+})();
+
+// --- Reaction definitions ---
+// tilt (radians), yShift (px), dur = [rampUp, hold, rampDown] in seconds
+const AUD_REACTIONS = {
+  'lean-fwd':  { tilt: -0.06, yShift: -2,  dur: [0.3, 0.5, 0.5] },
+  'lean-back': { tilt:  0.04, yShift:  1,  dur: [0.4, 0.4, 0.6] },
+  'jolt':      { tilt: -0.09, yShift: -3,  dur: [0.08, 0.12, 0.4] },
+  'nod-off':   { tilt:  0.12, yShift:  4,  dur: [1.5, 0.7, 0.12] },
+  'ovation':   { tilt: -0.03, yShift: -8,  dur: [0.5, 1.8, 1.0] },
+  'restless':  { tilt:  0,    yShift:  0,  dur: [0.2, 0.1, 0.3] },
+};
+
+// Mood → possible audience reactions + trigger probability
+const MOOD_AUD = {
+  greeting:  { types: ['lean-fwd'],        chance: 0.20 },
+  boast:     { types: ['lean-back'],        chance: 0.25 },
+  conflict:  { types: ['lean-fwd', 'jolt'], chance: 0.40 },
+  devotion:  { types: ['lean-back'],        chance: 0.30 },
+  despair:   { types: ['lean-back'],        chance: 0.35 },
+  madness:   { types: ['jolt'],             chance: 0.45 },
+  prophecy:  { types: ['lean-fwd'],         chance: 0.30 },
+  triumph:   { types: ['lean-fwd', 'jolt'], chance: 0.40 },
+  farewell:  { types: ['lean-fwd'],         chance: 0.25 },
+};
+
+function triggerAudienceReaction(beat) {
+  if (!beat) return;
+
+  // Title: everyone leans forward
+  if (beat.type === 'title') {
+    for (const m of AUDIENCE) {
+      if (m.gone) continue;
+      m.reaction = { type: 'lean-fwd', delay: 0.3 + Math.random() * 0.6, elapsed: 0 };
+    }
+    return;
+  }
+
+  // Fin: standing ovation + applause
+  if (beat.type === 'fin') {
+    for (const m of AUDIENCE) {
+      if (m.gone) continue;
+      m.reaction = { type: 'ovation', delay: 0.2 + Math.random() * 0.5, elapsed: 0 };
+    }
+    fireAudienceApplause();
+    return;
+  }
+
+  // Act title: restless shifting, maybe a cough
+  if (beat.type === 'act-title') {
+    for (const m of AUDIENCE) {
+      if (m.gone || Math.random() > 0.5) continue;
+      m.reaction = {
+        type: 'restless', delay: Math.random() * 0.4, elapsed: 0,
+        xTarget: (Math.random() - 0.5) * 5,
+      };
+    }
+    if (Math.random() < 0.2) fireAudienceCough(0.4 + Math.random() * 0.8);
+    return;
+  }
+
+  if (beat.type === 'direction') return;
+
+  // Dialogue lines: mood-based reactions
+  if (beat.mood && MOOD_AUD[beat.mood]) {
+    const ma = MOOD_AUD[beat.mood];
+
+    // The sleeper may doze off during devotion or despair
+    if ((beat.mood === 'devotion' || beat.mood === 'despair') && Math.random() < 0.3) {
+      const sleeper = AUDIENCE.find(m => m.personality === 'sleepy' && !m.gone && !m.reaction);
+      if (sleeper) sleeper.reaction = { type: 'nod-off', delay: 0.5 + Math.random(), elapsed: 0 };
+    }
+
+    // Rare walkout on despair — a real joke, use sparingly
+    if (beat.mood === 'despair' && Math.random() < 0.08) {
+      const victim = AUDIENCE.find(m => m.type === 'back' && !m.gone && m.personality !== 'sleepy');
+      if (victim) {
+        victim.reaction = { type: 'walkout', delay: 0.5, elapsed: 0 };
+        return;
+      }
+    }
+
+    // General mood reaction — not every beat, staggered onset
+    for (const m of AUDIENCE) {
+      if (m.gone || m.reaction) continue;
+      if (Math.random() > ma.chance) continue;
+      const type = ma.types[Math.floor(Math.random() * ma.types.length)];
+      m.reaction = { type, delay: 0.4 + Math.random() * 0.8, elapsed: 0 };
+    }
+
+    if (Math.random() < 0.2) fireAudienceMurmur();
+  }
+}
+
+function resetAudience() {
+  for (const m of AUDIENCE) {
+    m.tilt = 0; m.yShift = 0; m.xShift = 0;
+    m.reaction = null; m.gone = false;
+  }
+}
+
+function updateAudience(dt) {
+  for (const m of AUDIENCE) {
+    if (m.gone) continue;
+    if (!m.reaction) continue;
+
+    m.reaction.elapsed += dt;
+    const r = m.reaction;
+
+    // Walkout: accelerating drop below canvas
+    if (r.type === 'walkout') {
+      const t = Math.max(0, r.elapsed - r.delay);
+      if (t > 0) m.yShift = t * t * 25;
+      if (m.yShift > 60) { m.gone = true; m.reaction = null; }
+      continue;
+    }
+
+    const def = AUD_REACTIONS[r.type];
+    if (!def) { m.reaction = null; continue; }
+    const [up, hold, down] = def.dur;
+    const total = r.delay + up + hold + down;
+    const t = r.elapsed;
+
+    if (t < r.delay) {
+      // Waiting
+    } else if (t < r.delay + up) {
+      const p = (t - r.delay) / up;
+      const e = p * p * (3 - 2 * p);  // smoothstep
+      m.tilt   = def.tilt * e;
+      m.yShift = def.yShift * e;
+      if (r.xTarget) m.xShift = r.xTarget * e;
+    } else if (t < r.delay + up + hold) {
+      m.tilt   = def.tilt;
+      m.yShift = def.yShift;
+      if (r.xTarget) m.xShift = r.xTarget;
+    } else if (t < total) {
+      const p = (t - r.delay - up - hold) / down;
+      const e = 1 - p * p * (3 - 2 * p);
+      m.tilt   = def.tilt * e;
+      m.yShift = def.yShift * e;
+      if (r.xTarget) m.xShift = r.xTarget * e;
+    } else {
+      m.tilt = 0; m.yShift = 0; m.xShift = 0;
+      m.reaction = null;
+    }
+  }
+}
+
+function drawAudience(ts) {
+  const t = ts * 0.001;
+  for (const m of AUDIENCE) {
+    if (m.gone) continue;
+    const sway = Math.sin(t * m.swayFreq + m.swayPhase) * m.swayAmp;
+
+    ctx.save();
+    ctx.translate(m.x + m.xShift, m.y + m.yShift);
+    ctx.rotate(sway + m.tilt);
+    ctx.scale(m.scale, m.scale);
+
+    if (m.type === 'back') {
+      traceBackShape(BACK_VARS[m.variant]);
+    } else {
+      if (m.facing < 0) ctx.scale(-1, 1);
+      traceProfileShape(PROF_VARS[m.variant]);
+    }
+
+    // Dark silhouette — barely distinguishable from background
+    ctx.fillStyle = '#1c1812';
+    ctx.fill();
+
+    // Subtle stage-light gradient on the head area
+    const v = m.type === 'back' ? BACK_VARS[m.variant] : PROF_VARS[m.variant];
+    const h = m.type === 'back'
+      ? v.sh + v.nh + v.hh + (v.crown === 'hat' ? 13 : v.crown === 'bun' ? 5 : 3)
+      : v.bodyH + v.neckL + v.headH + (v.crown === 'bun' ? 4 : 2);
+    const grd = ctx.createLinearGradient(0, -h, 0, 0);
+    grd.addColorStop(0, 'rgba(55,45,28,0.12)');
+    grd.addColorStop(0.6, 'rgba(30,24,14,0.04)');
+    grd.addColorStop(1, 'rgba(0,0,0,0)');
+    ctx.fillStyle = grd;
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+// --- Audience sounds ---
+
+function fireAudienceMurmur() {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const len = audioCtx.sampleRate * 0.3 | 0;
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.8;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(0.025, t0 + 0.05);
+  g.gain.linearRampToValueAtTime(0.018, t0 + 0.15);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
+  src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
+  src.start(t0); src.stop(t0 + 0.32);
+}
+
+function fireAudienceCough(delay) {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime + (delay || 0);
+  const len = audioCtx.sampleRate * 0.12 | 0;
+  const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+  const d = buf.getChannelData(0);
+  for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
+  const src = audioCtx.createBufferSource(); src.buffer = buf;
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass'; bp.frequency.value = 800; bp.Q.value = 1.2;
+  const g = audioCtx.createGain();
+  g.gain.setValueAtTime(0, t0);
+  g.gain.linearRampToValueAtTime(0.04, t0 + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.015, t0 + 0.035);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.10);
+  src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
+  src.start(t0); src.stop(t0 + 0.13);
+}
+
+function fireAudienceApplause() {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  for (let i = 0; i < 20; i++) {
+    const delay = 0.1 + Math.random() * 1.4;
+    const envelope = delay < 0.7 ? delay / 0.7 : Math.max(0.2, 2 * (1 - delay / 1.5));
+    const vol = (0.012 + Math.random() * 0.015) * envelope;
+    const dur = 0.018 + Math.random() * 0.01;
+    const len = audioCtx.sampleRate * dur | 0;
+    const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
+    const d = buf.getChannelData(0);
+    for (let j = 0; j < d.length; j++) d[j] = Math.random() * 2 - 1;
+    const src = audioCtx.createBufferSource(); src.buffer = buf;
+    const hp = audioCtx.createBiquadFilter();
+    hp.type = 'highpass'; hp.frequency.value = 2200; hp.Q.value = 0.5;
+    const g = audioCtx.createGain();
+    g.gain.setValueAtTime(vol, t0 + delay);
+    g.gain.exponentialRampToValueAtTime(0.0001, t0 + delay + dur);
+    src.connect(hp); hp.connect(g); g.connect(audioCtx.destination);
+    src.start(t0 + delay); src.stop(t0 + delay + dur + 0.01);
+  }
 }
 
 // =============================================================================
@@ -1836,6 +2237,8 @@ function draw(ts) {
   }
   emotionParticles = emotionParticles.filter(ep => ep.life < ep.maxLife);
 
+  updateAudience(dt);
+
   const yOff  = currentYOffset();
   const alpha = currentAlpha();
 
@@ -1877,6 +2280,8 @@ function draw(ts) {
   // Crank housing drawn here, arm drawn absolutely last so it clears the stage edge
   withAlpha(isEnabled('crank') ? 1 : DIM, drawCrankHousing);
   withAlpha(isEnabled('crank') ? 1 : DIM, drawCrankArm);
+
+  drawAudience(ts);
 
   drawEmotionParticles();
   drawCueCards(ts);
