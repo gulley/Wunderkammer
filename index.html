@@ -16,12 +16,12 @@
   }
   canvas {
     display: block;
-    /* Scale to fit the viewport while preserving the 640:520 aspect ratio.
+    /* Scale to fit the viewport while preserving the 700:560 aspect ratio.
        The three-way min covers: original size, viewport width, and the width
        that would make the canvas exactly 100vh tall at this aspect ratio. */
-    width: min(640px, 100vw, calc(100vh * 640 / 520));
+    width: min(700px, 100vw, calc(100vh * 700 / 560));
     height: auto;
-    aspect-ratio: 640 / 520;
+    aspect-ratio: 700 / 560;
   }
 </style>
 </head>
@@ -30,8 +30,8 @@
 <script>
 const canvas = document.getElementById('c');
 const ctx    = canvas.getContext('2d');
-canvas.width  = 640;
-canvas.height = 520;
+canvas.width  = 700;
+canvas.height = 560;
 
 // =============================================================================
 // ROSTER
@@ -1832,12 +1832,14 @@ function drawAudienceCues() {
     else continue;
     if (alpha < 0.01) continue;
 
-    // Pulse effect: 3 throbs during hold phase
+    // Pulse effect: 3 fade-in/fade-out throbs during hold phase
     let scale = 1.0;
     if (c.pulse && c.phase === 'holding') {
-      const pulseT = c.phaseT * 3.0 / 3.0; // 3 pulses over 3.0s hold
-      scale = 1.0 + 0.18 * Math.pow(Math.abs(Math.sin(pulseT * Math.PI * 3)), 0.7);
-      alpha *= 0.7 + 0.3 * Math.pow(Math.abs(Math.sin(pulseT * Math.PI * 3)), 0.7);
+      // 3 pulses over 3.0s: each ~1.0s with fade-in, peak, fade-out
+      const cycle = (c.phaseT % 1.0) / 1.0; // 0→1 per pulse
+      const wave = Math.sin(cycle * Math.PI); // 0→1→0 smooth
+      alpha = 0.85 * wave;
+      scale = 1.0 + 0.12 * wave;
     }
 
     ctx.save();
@@ -2834,6 +2836,10 @@ function draw(ts) {
   ctx.fillStyle = '#0e0b08';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
+  // Offset scene into center of expanded canvas
+  ctx.save();
+  ctx.translate(30, 20);
+
   // Dust motes drifting in the dark surround
   drawDustMotes(ts);
 
@@ -2880,6 +2886,8 @@ function draw(ts) {
   drawEmotionParticles();
   drawCueCards(ts);
 
+  ctx.restore(); // end scene offset
+
   requestAnimationFrame(draw);
 }
 
@@ -2891,8 +2899,8 @@ function getCanvasPos(e) {
   const r = canvas.getBoundingClientRect();
   const cx = e.touches ? e.touches[0].clientX : e.clientX;
   const cy = e.touches ? e.touches[0].clientY : e.clientY;
-  return [(cx - r.left) * canvas.width  / r.width,
-          (cy - r.top)  * canvas.height / r.height];
+  return [(cx - r.left) * canvas.width  / r.width - 30,
+          (cy - r.top)  * canvas.height / r.height - 20];
 }
 
 function inCircle(x, y, cx, cy) {
