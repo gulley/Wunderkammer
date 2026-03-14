@@ -1297,46 +1297,47 @@ const AUDIENCE = (() => {
   const m = [];
   const rnd = (a, b) => a + Math.random() * (b - a);
 
-  // Bottom row: 6 figures, partially below canvas edge
-  const bx = [95, 180, 275, 350, 445, 540];
-  const bv = [0, 1, 3, 2, 5, 4];  // variant indices — max visual diversity
-  const bp = ['attentive', 'attentive', 'sleepy', 'attentive', 'fidgety', 'emotional'];
-  for (let i = 0; i < 6; i++) {
+  // Bottom row: 10 figures packed across the bottom, visibly present
+  const bx = [55, 115, 175, 230, 290, 350, 405, 460, 525, 590];
+  const bv = [0, 1, 3, 6, 2, 5, 4, 0, 1, 6];  // variant diversity, some repeats
+  const bp = ['attentive','attentive','sleepy','attentive','fidgety',
+              'emotional','attentive','attentive','fidgety','attentive'];
+  for (let i = 0; i < 10; i++) {
     m.push({
-      x: bx[i] + rnd(-8, 8),  y: 518 + rnd(-4, 6),
+      x: bx[i] + rnd(-6, 6),  y: 504 + rnd(-4, 5),
       type: 'back', variant: bv[i],
-      scale: 0.88 + rnd(0, 0.22),
+      scale: 1.10 + rnd(0, 0.30),
       swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.3 + rnd(0, 0.18),
-      swayAmp: 0.012 + rnd(0, 0.008),
+      swayAmp: 0.030 + rnd(0, 0.020),
       personality: bp[i],
       tilt: 0, yShift: 0, xShift: 0,
       reaction: null, gone: false,
     });
   }
 
-  // Left profiles: 2 figures in the dark area left of the backdrop
-  for (let i = 0; i < 2; i++) {
+  // Left profiles: 3 figures in the dark area left of the backdrop
+  for (let i = 0; i < 3; i++) {
     m.push({
-      x: 40 + rnd(0, 35), y: 270 + i * 38 + rnd(-5, 5),
-      type: 'profile', facing: 1, variant: i,
-      scale: 0.62 + rnd(0, 0.10),
+      x: 30 + rnd(0, 40), y: 255 + i * 32 + rnd(-4, 4),
+      type: 'profile', facing: 1, variant: i % PROF_VARS.length,
+      scale: 0.85 + rnd(0, 0.15),
       swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.25 + rnd(0, 0.10),
-      swayAmp: 0.008 + rnd(0, 0.005),
-      personality: 'attentive',
+      swayAmp: 0.022 + rnd(0, 0.012),
+      personality: i === 1 ? 'emotional' : 'attentive',
       tilt: 0, yShift: 0, xShift: 0,
       reaction: null, gone: false,
     });
   }
 
-  // Right profiles: 2 figures in the dark area right of the backdrop
-  for (let i = 0; i < 2; i++) {
+  // Right profiles: 3 figures in the dark area right of the backdrop
+  for (let i = 0; i < 3; i++) {
     m.push({
-      x: 565 + rnd(0, 35), y: 270 + i * 38 + rnd(-5, 5),
-      type: 'profile', facing: -1, variant: i + 2,
-      scale: 0.62 + rnd(0, 0.10),
+      x: 555 + rnd(0, 40), y: 255 + i * 32 + rnd(-4, 4),
+      type: 'profile', facing: -1, variant: (i + 2) % PROF_VARS.length,
+      scale: 0.85 + rnd(0, 0.15),
       swayPhase: rnd(0, Math.PI * 2), swayFreq: 0.25 + rnd(0, 0.10),
-      swayAmp: 0.008 + rnd(0, 0.005),
-      personality: 'attentive',
+      swayAmp: 0.022 + rnd(0, 0.012),
+      personality: i === 2 ? 'sleepy' : 'attentive',
       tilt: 0, yShift: 0, xShift: 0,
       reaction: null, gone: false,
     });
@@ -1348,25 +1349,25 @@ const AUDIENCE = (() => {
 // --- Reaction definitions ---
 // tilt (radians), yShift (px), dur = [rampUp, hold, rampDown] in seconds
 const AUD_REACTIONS = {
-  'lean-fwd':  { tilt: -0.06, yShift: -2,  dur: [0.3, 0.5, 0.5] },
-  'lean-back': { tilt:  0.04, yShift:  1,  dur: [0.4, 0.4, 0.6] },
-  'jolt':      { tilt: -0.09, yShift: -3,  dur: [0.08, 0.12, 0.4] },
-  'nod-off':   { tilt:  0.12, yShift:  4,  dur: [1.5, 0.7, 0.12] },
-  'ovation':   { tilt: -0.03, yShift: -8,  dur: [0.5, 1.8, 1.0] },
+  'lean-fwd':  { tilt: -0.14, yShift: -5,  dur: [0.25, 0.5, 0.45] },
+  'lean-back': { tilt:  0.10, yShift:  3,  dur: [0.35, 0.4, 0.5] },
+  'jolt':      { tilt: -0.18, yShift: -7,  dur: [0.06, 0.10, 0.35] },
+  'nod-off':   { tilt:  0.22, yShift:  8,  dur: [1.2, 0.6, 0.10] },
+  'ovation':   { tilt: -0.06, yShift: -14, dur: [0.4, 2.0, 0.8] },
   'restless':  { tilt:  0,    yShift:  0,  dur: [0.2, 0.1, 0.3] },
 };
 
 // Mood → possible audience reactions + trigger probability
 const MOOD_AUD = {
-  greeting:  { types: ['lean-fwd'],        chance: 0.20 },
-  boast:     { types: ['lean-back'],        chance: 0.25 },
-  conflict:  { types: ['lean-fwd', 'jolt'], chance: 0.40 },
-  devotion:  { types: ['lean-back'],        chance: 0.30 },
-  despair:   { types: ['lean-back'],        chance: 0.35 },
-  madness:   { types: ['jolt'],             chance: 0.45 },
-  prophecy:  { types: ['lean-fwd'],         chance: 0.30 },
-  triumph:   { types: ['lean-fwd', 'jolt'], chance: 0.40 },
-  farewell:  { types: ['lean-fwd'],         chance: 0.25 },
+  greeting:  { types: ['lean-fwd'],        chance: 0.45 },
+  boast:     { types: ['lean-back'],        chance: 0.50 },
+  conflict:  { types: ['lean-fwd', 'jolt'], chance: 0.65 },
+  devotion:  { types: ['lean-back'],        chance: 0.50 },
+  despair:   { types: ['lean-back'],        chance: 0.55 },
+  madness:   { types: ['jolt'],             chance: 0.70 },
+  prophecy:  { types: ['lean-fwd'],         chance: 0.55 },
+  triumph:   { types: ['lean-fwd', 'jolt'], chance: 0.65 },
+  farewell:  { types: ['lean-fwd'],         chance: 0.45 },
 };
 
 function triggerAudienceReaction(beat) {
@@ -1376,8 +1377,9 @@ function triggerAudienceReaction(beat) {
   if (beat.type === 'title') {
     for (const m of AUDIENCE) {
       if (m.gone) continue;
-      m.reaction = { type: 'lean-fwd', delay: 0.3 + Math.random() * 0.6, elapsed: 0 };
+      m.reaction = { type: 'lean-fwd', delay: 0.1 + Math.random() * 0.3, elapsed: 0 };
     }
+    fireAudienceMurmur();
     return;
   }
 
@@ -1385,7 +1387,7 @@ function triggerAudienceReaction(beat) {
   if (beat.type === 'fin') {
     for (const m of AUDIENCE) {
       if (m.gone) continue;
-      m.reaction = { type: 'ovation', delay: 0.2 + Math.random() * 0.5, elapsed: 0 };
+      m.reaction = { type: 'ovation', delay: 0.1 + Math.random() * 0.3, elapsed: 0 };
     }
     fireAudienceApplause();
     return;
@@ -1394,13 +1396,13 @@ function triggerAudienceReaction(beat) {
   // Act title: restless shifting, maybe a cough
   if (beat.type === 'act-title') {
     for (const m of AUDIENCE) {
-      if (m.gone || Math.random() > 0.5) continue;
+      if (m.gone || Math.random() > 0.65) continue;
       m.reaction = {
-        type: 'restless', delay: Math.random() * 0.4, elapsed: 0,
-        xTarget: (Math.random() - 0.5) * 5,
+        type: 'restless', delay: Math.random() * 0.3, elapsed: 0,
+        xTarget: (Math.random() - 0.5) * 8,
       };
     }
-    if (Math.random() < 0.2) fireAudienceCough(0.4 + Math.random() * 0.8);
+    if (Math.random() < 0.35) fireAudienceCough(0.2 + Math.random() * 0.5);
     return;
   }
 
@@ -1411,29 +1413,29 @@ function triggerAudienceReaction(beat) {
     const ma = MOOD_AUD[beat.mood];
 
     // The sleeper may doze off during devotion or despair
-    if ((beat.mood === 'devotion' || beat.mood === 'despair') && Math.random() < 0.3) {
+    if ((beat.mood === 'devotion' || beat.mood === 'despair') && Math.random() < 0.45) {
       const sleeper = AUDIENCE.find(m => m.personality === 'sleepy' && !m.gone && !m.reaction);
-      if (sleeper) sleeper.reaction = { type: 'nod-off', delay: 0.5 + Math.random(), elapsed: 0 };
+      if (sleeper) sleeper.reaction = { type: 'nod-off', delay: 0.3 + Math.random() * 0.5, elapsed: 0 };
     }
 
     // Rare walkout on despair — a real joke, use sparingly
-    if (beat.mood === 'despair' && Math.random() < 0.08) {
+    if (beat.mood === 'despair' && Math.random() < 0.10) {
       const victim = AUDIENCE.find(m => m.type === 'back' && !m.gone && m.personality !== 'sleepy');
       if (victim) {
-        victim.reaction = { type: 'walkout', delay: 0.5, elapsed: 0 };
+        victim.reaction = { type: 'walkout', delay: 0.3, elapsed: 0 };
         return;
       }
     }
 
-    // General mood reaction — not every beat, staggered onset
+    // General mood reaction — shorter delays, higher chance
     for (const m of AUDIENCE) {
       if (m.gone || m.reaction) continue;
       if (Math.random() > ma.chance) continue;
       const type = ma.types[Math.floor(Math.random() * ma.types.length)];
-      m.reaction = { type, delay: 0.4 + Math.random() * 0.8, elapsed: 0 };
+      m.reaction = { type, delay: 0.15 + Math.random() * 0.4, elapsed: 0 };
     }
 
-    if (Math.random() < 0.2) fireAudienceMurmur();
+    if (Math.random() < 0.35) fireAudienceMurmur();
   }
 }
 
@@ -1510,7 +1512,7 @@ function drawAudience(ts) {
     }
 
     // Dark silhouette — subtle but visible against the surround
-    ctx.fillStyle = '#2a2219';
+    ctx.fillStyle = '#342c22';
     ctx.fill();
 
     // Subtle stage-light gradient on the head area
@@ -1519,8 +1521,8 @@ function drawAudience(ts) {
       ? v.sh + v.nh + v.hh + (v.crown === 'hat' ? 13 : v.crown === 'bun' ? 5 : 3)
       : v.bodyH + v.neckL + v.headH + (v.crown === 'bun' ? 4 : 2);
     const grd = ctx.createLinearGradient(0, -h, 0, 0);
-    grd.addColorStop(0, 'rgba(70,58,36,0.18)');
-    grd.addColorStop(0.5, 'rgba(40,32,20,0.08)');
+    grd.addColorStop(0, 'rgba(90,75,50,0.22)');
+    grd.addColorStop(0.5, 'rgba(55,45,30,0.10)');
     grd.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = grd;
     ctx.fill();
@@ -1534,56 +1536,56 @@ function drawAudience(ts) {
 function fireAudienceMurmur() {
   if (!audioCtx) return;
   const t0 = audioCtx.currentTime;
-  const len = audioCtx.sampleRate * 0.3 | 0;
+  const len = audioCtx.sampleRate * 0.4 | 0;
   const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   const src = audioCtx.createBufferSource(); src.buffer = buf;
   const bp = audioCtx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = 500; bp.Q.value = 0.8;
+  bp.type = 'bandpass'; bp.frequency.value = 450; bp.Q.value = 0.6;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(0.025, t0 + 0.05);
-  g.gain.linearRampToValueAtTime(0.018, t0 + 0.15);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.28);
+  g.gain.linearRampToValueAtTime(0.08, t0 + 0.04);
+  g.gain.linearRampToValueAtTime(0.06, t0 + 0.20);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.38);
   src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
-  src.start(t0); src.stop(t0 + 0.32);
+  src.start(t0); src.stop(t0 + 0.42);
 }
 
 function fireAudienceCough(delay) {
   if (!audioCtx) return;
   const t0 = audioCtx.currentTime + (delay || 0);
-  const len = audioCtx.sampleRate * 0.12 | 0;
+  const len = audioCtx.sampleRate * 0.15 | 0;
   const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
   const d = buf.getChannelData(0);
   for (let i = 0; i < d.length; i++) d[i] = Math.random() * 2 - 1;
   const src = audioCtx.createBufferSource(); src.buffer = buf;
   const bp = audioCtx.createBiquadFilter();
-  bp.type = 'bandpass'; bp.frequency.value = 800; bp.Q.value = 1.2;
+  bp.type = 'bandpass'; bp.frequency.value = 700; bp.Q.value = 1.0;
   const g = audioCtx.createGain();
   g.gain.setValueAtTime(0, t0);
-  g.gain.linearRampToValueAtTime(0.04, t0 + 0.008);
-  g.gain.exponentialRampToValueAtTime(0.015, t0 + 0.035);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.10);
+  g.gain.linearRampToValueAtTime(0.12, t0 + 0.006);
+  g.gain.exponentialRampToValueAtTime(0.04, t0 + 0.04);
+  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.13);
   src.connect(bp); bp.connect(g); g.connect(audioCtx.destination);
-  src.start(t0); src.stop(t0 + 0.13);
+  src.start(t0); src.stop(t0 + 0.16);
 }
 
 function fireAudienceApplause() {
   if (!audioCtx) return;
   const t0 = audioCtx.currentTime;
-  for (let i = 0; i < 20; i++) {
-    const delay = 0.1 + Math.random() * 1.4;
-    const envelope = delay < 0.7 ? delay / 0.7 : Math.max(0.2, 2 * (1 - delay / 1.5));
-    const vol = (0.012 + Math.random() * 0.015) * envelope;
-    const dur = 0.018 + Math.random() * 0.01;
+  for (let i = 0; i < 35; i++) {
+    const delay = 0.05 + Math.random() * 1.6;
+    const envelope = delay < 0.8 ? delay / 0.8 : Math.max(0.15, 2 * (1 - delay / 1.7));
+    const vol = (0.03 + Math.random() * 0.035) * envelope;
+    const dur = 0.015 + Math.random() * 0.012;
     const len = audioCtx.sampleRate * dur | 0;
     const buf = audioCtx.createBuffer(1, len, audioCtx.sampleRate);
     const d = buf.getChannelData(0);
     for (let j = 0; j < d.length; j++) d[j] = Math.random() * 2 - 1;
     const src = audioCtx.createBufferSource(); src.buffer = buf;
     const hp = audioCtx.createBiquadFilter();
-    hp.type = 'highpass'; hp.frequency.value = 2200; hp.Q.value = 0.5;
+    hp.type = 'highpass'; hp.frequency.value = 1800; hp.Q.value = 0.4;
     const g = audioCtx.createGain();
     g.gain.setValueAtTime(vol, t0 + delay);
     g.gain.exponentialRampToValueAtTime(0.0001, t0 + delay + dur);
