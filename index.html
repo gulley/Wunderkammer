@@ -48,17 +48,21 @@ function chromaKey(img, greenDominance = 60, minGreen = 80) {
   full.width = img.naturalWidth; full.height = img.naturalHeight;
   const fc = full.getContext('2d');
   fc.drawImage(img, 0, 0);
-  const id = fc.getImageData(0, 0, full.width, full.height);
-  const d = id.data;
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i], g = d[i+1], b = d[i+2];
-    const dominance = g - Math.max(r, b);
-    if (g > minGreen && dominance > 0) {
-      const t = Math.min(1, dominance / greenDominance);
-      d[i+3] = Math.round(d[i+3] * (1 - t));
+  try {
+    const id = fc.getImageData(0, 0, full.width, full.height);
+    const d = id.data;
+    for (let i = 0; i < d.length; i += 4) {
+      const r = d[i], g = d[i+1], b = d[i+2];
+      const dominance = g - Math.max(r, b);
+      if (g > minGreen && dominance > 0) {
+        const t = Math.min(1, dominance / greenDominance);
+        d[i+3] = Math.round(d[i+3] * (1 - t));
+      }
     }
+    fc.putImageData(id, 0, 0);
+  } catch (e) {
+    // CORS/tainted canvas on file:// — proceed without chroma keying
   }
-  fc.putImageData(id, 0, 0);
 
   // Step 2: scale down to display size so drawImage is always 1:1
   const cardW = Math.round(CARD_H * img.naturalWidth / img.naturalHeight);
@@ -1505,8 +1509,8 @@ function drawAudience(ts) {
       traceProfileShape(PROF_VARS[m.variant]);
     }
 
-    // Dark silhouette — barely distinguishable from background
-    ctx.fillStyle = '#1c1812';
+    // Dark silhouette — subtle but visible against the surround
+    ctx.fillStyle = '#2a2219';
     ctx.fill();
 
     // Subtle stage-light gradient on the head area
@@ -1515,8 +1519,8 @@ function drawAudience(ts) {
       ? v.sh + v.nh + v.hh + (v.crown === 'hat' ? 13 : v.crown === 'bun' ? 5 : 3)
       : v.bodyH + v.neckL + v.headH + (v.crown === 'bun' ? 4 : 2);
     const grd = ctx.createLinearGradient(0, -h, 0, 0);
-    grd.addColorStop(0, 'rgba(55,45,28,0.12)');
-    grd.addColorStop(0.6, 'rgba(30,24,14,0.04)');
+    grd.addColorStop(0, 'rgba(70,58,36,0.18)');
+    grd.addColorStop(0.5, 'rgba(40,32,20,0.08)');
     grd.addColorStop(1, 'rgba(0,0,0,0)');
     ctx.fillStyle = grd;
     ctx.fill();
