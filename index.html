@@ -850,6 +850,16 @@ let playBeatIdx    = -1;
 let playCrankAccum = 0;
 let playEnded      = false;
 let windDown       = 1.0;
+
+// --- Curtain bow ---
+let bowActive = false;
+let bowT = 0;
+const BOW_GLIDE_DUR = 1.2;   // seconds to glide to center
+const BOW_DIP_DUR = 0.8;     // seconds for the bow dip
+const BOW_HOLD_DUR = 1.0;    // hold the bow
+const BOW_RISE_DUR = 0.6;    // rise back up
+let bowTargets = [];          // [{startPos, targetPos}] per puppet
+
 const BEAT_BASE    = 2 * Math.PI;
 
 const MOOD_PACE = {
@@ -974,6 +984,9 @@ function startPlay() {
   emotionParticles = [];
   playEnded      = false;
   windDown       = 1.0;
+  bowActive      = false;
+  bowT           = 0;
+  bowTargets     = [];
   resetAudience();
 }
 
@@ -1427,14 +1440,16 @@ function spawnSideCues(text) {
   // Left side
   audienceCues.push({
     text, phase: 'entering', phaseT: 0,
-    x: 55 + (Math.random() - 0.5) * 20, y: 225 + Math.random() * 20,
+    x: 55 + (Math.random() - 0.5) * 20, y: 190 + Math.random() * 10,
     rotation: (Math.random() - 0.5) * 0.04,
+    pulse: true,
   });
   // Right side
   audienceCues.push({
     text, phase: 'entering', phaseT: 0,
-    x: 585 + (Math.random() - 0.5) * 20, y: 225 + Math.random() * 20,
+    x: 585 + (Math.random() - 0.5) * 20, y: 190 + Math.random() * 10,
     rotation: (Math.random() - 0.5) * 0.04,
+    pulse: true,
   });
 }
 
@@ -1485,9 +1500,8 @@ function triggerFullOvation() {
   for (let i = 0; i < 18; i++) {
     const thrower = AUDIENCE[Math.floor(Math.random() * AUDIENCE.length)];
     if (thrower.gone) continue;
-    // Target: random point on the stage top surface
-    const ts = 0.15 + Math.random() * 0.7;  // s (left-right on stage)
-    const tt = 0.2 + Math.random() * 0.6;   // t (front-back on stage)
+    const ts = 0.15 + Math.random() * 0.7;
+    const tt = 0.2 + Math.random() * 0.6;
     const landing = topPt(ts, tt);
     stageFlowers.push({
       x: thrower.x,
@@ -1504,6 +1518,19 @@ function triggerFullOvation() {
       landedAlpha: 1.0,
     });
   }
+  // Start curtain bow
+  bowActive = true;
+  bowT = 0;
+  const center = topPt(0.5, 0.55);
+  bowTargets = perf.map((p, i) => {
+    const startPos = p.track.pt(p.angle);
+    // Two puppets side by side at center, offset slightly left/right
+    const offsetX = (i === 0 ? -35 : 35);
+    return {
+      startX: startPos[0], startY: startPos[1],
+      targetX: center[0] + offsetX, targetY: center[1],
+    };
+  });
 }
 
 function triggerAudienceReaction(beat) {
@@ -1721,7 +1748,7 @@ function updateAudience(dt) {
   for (const c of audienceCues) {
     c.phaseT += dt;
     if (c.phase === 'entering' && c.phaseT >= 0.3) { c.phase = 'holding'; c.phaseT = 0; }
-    if (c.phase === 'holding' && c.phaseT >= 1.8) { c.phase = 'exiting'; c.phaseT = 0; }
+    if (c.phase === 'holding' && c.phaseT >= (c.pulse ? 3.0 : 1.8)) { c.phase = 'exiting'; c.phaseT = 0; }
     if (c.phase === 'exiting' && c.phaseT >= 0.5) { c.phase = 'gone'; }
   }
   audienceCues = audienceCues.filter(c => c.phase !== 'gone');
@@ -1805,10 +1832,19 @@ function drawAudienceCues() {
     else continue;
     if (alpha < 0.01) continue;
 
+    // Pulse effect: 3 throbs during hold phase
+    let scale = 1.0;
+    if (c.pulse && c.phase === 'holding') {
+      const pulseT = c.phaseT * 3.0 / 3.0; // 3 pulses over 3.0s hold
+      scale = 1.0 + 0.18 * Math.pow(Math.abs(Math.sin(pulseT * Math.PI * 3)), 0.7);
+      alpha *= 0.7 + 0.3 * Math.pow(Math.abs(Math.sin(pulseT * Math.PI * 3)), 0.7);
+    }
+
     ctx.save();
     ctx.globalAlpha = alpha;
     ctx.translate(c.x, c.y);
     ctx.rotate(c.rotation);
+    ctx.scale(scale, scale);
     ctx.font = 'italic 17px Georgia, "Times New Roman", serif';
     ctx.fillStyle = '#c8b898';
     ctx.textAlign = 'center';
@@ -2442,22 +2478,61 @@ function drawCrankArm() {
 function drawPuppet(p, yOffset, alpha, cardTint) {
   const PUPPET_SCALE = 1.125;
   const stickH = 52 * PUPPET_SCALE;     // ~58.5 px
+  const puppetIdx = perf.indexOf(p);
 
-  const pos      = p.track.pt(p.angle);
+  let pos      = p.track.pt(p.angle);
+  let bob      = p.bob(p.angle) * PUPPET_SCALE;
+  let waggle   = p.waggle(p.angle);
+  let cardTilt = p.cardTilt(p.angle);
+  let bowDip   = 0;
+
+  // Bow animation overrides
+  if (bowActive && bowTargets[puppetIdx]) {
+    const bt = bowTargets[puppetIdx];
+    const totalBow = BOW_GLIDE_DUR + BOW_DIP_DUR + BOW_HOLD_DUR + BOW_RISE_DUR;
+
+    if (bowT < BOW_GLIDE_DUR) {
+      // Glide to center
+      const t = bowT / BOW_GLIDE_DUR;
+      const e = t * t * (3 - 2 * t); // smoothstep
+      pos = [
+        bt.startX + (bt.targetX - bt.startX) * e,
+        bt.startY + (bt.targetY - bt.startY) * e,
+      ];
+      // Dampen gait animations as we glide
+      const dampen = 1 - e;
+      bob *= dampen; waggle *= dampen; cardTilt *= dampen;
+    } else {
+      // At center position
+      pos = [bt.targetX, bt.targetY];
+      bob = 0; waggle = 0; cardTilt = 0;
+      const bt2 = bowT - BOW_GLIDE_DUR;
+      if (bt2 < BOW_DIP_DUR) {
+        // Dip forward
+        const t = bt2 / BOW_DIP_DUR;
+        bowDip = t * t * (3 - 2 * t) * 0.45;
+      } else if (bt2 < BOW_DIP_DUR + BOW_HOLD_DUR) {
+        bowDip = 0.45;
+      } else if (bt2 < BOW_DIP_DUR + BOW_HOLD_DUR + BOW_RISE_DUR) {
+        const t = (bt2 - BOW_DIP_DUR - BOW_HOLD_DUR) / BOW_RISE_DUR;
+        bowDip = 0.45 * (1 - t * t * (3 - 2 * t));
+      }
+    }
+  }
+
   const posAhead = p.track.pt(p.angle + 0.01);
   const dx       = posAhead[0] - pos[0];
   const dy       = posAhead[1] - pos[1];
   const facing   = Math.atan2(dy, dx);
-  // -cos(facing): full width when moving horizontally, edge-on when moving into/out of stage
-  // Sign naturally handles facing direction (negative = face left, positive = face right)
   const rawScale = -Math.cos(facing);
   const MIN_CARD_SCALE = 0.15;
   const sign     = Math.sign(rawScale) || 1;
-  const scaleX   = sign * Math.max(Math.abs(rawScale), MIN_CARD_SCALE);
+  let   scaleX   = sign * Math.max(Math.abs(rawScale), MIN_CARD_SCALE);
 
-  const bob      = p.bob(p.angle) * PUPPET_SCALE;
-  const waggle   = p.waggle(p.angle);
-  const cardTilt = p.cardTilt(p.angle);
+  // During bow, face forward (toward viewer)
+  if (bowActive && bowTargets[puppetIdx] && bowT >= BOW_GLIDE_DUR) {
+    scaleX = puppetIdx === 0 ? -1 : 1;
+  }
 
   ctx.save();
   ctx.globalAlpha = (alpha !== undefined) ? alpha : 1;
@@ -2470,7 +2545,7 @@ function drawPuppet(p, yOffset, alpha, cardTint) {
 
   ctx.save();
   ctx.translate(0, bob - stickH);
-  ctx.rotate(cardTilt);
+  ctx.rotate(cardTilt + bowDip);
 
   const bx = -p.cardW / 2, by = -p.cardH;
 
@@ -2744,6 +2819,11 @@ function draw(ts) {
   emotionParticles = emotionParticles.filter(ep => ep.life < ep.maxLife);
 
   updateAudience(dt);
+
+  // Advance bow animation
+  if (bowActive) {
+    bowT += dt;
+  }
 
   const yOff  = currentYOffset();
   const alpha = currentAlpha();
