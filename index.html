@@ -896,6 +896,14 @@ function activateBeat(beat) {
     rotation: (Math.random() - 0.5) * 0.035,
   });
   triggerAudienceReaction(beat);
+
+  // Boney fan chant — triggers once mid-show when Boney is in the cast
+  if (!boneyChantTriggered && beat.type === 'line' && beat.act === 2) {
+    const hasBoney = perf.some(p => p.name === 'Boney');
+    if (hasBoney && Math.random() < 0.50) {
+      fireBoneyChant();
+    }
+  }
 }
 
 let suffusion = { mood: null, intensity: 0, speakerIdx: -1 };
@@ -1566,6 +1574,67 @@ function resetAudience() {
   ovationTriggered = false;
   audienceFade = 0;
   audienceRevealed = false;
+  boneyChantTriggered = false;
+}
+
+// --- Boney fan chant ---
+// When Boney is in the cast, the crowd erupts into a rhythmic chant mid-show
+let boneyChantTriggered = false;
+
+function fireBoneyChant() {
+  if (!audioCtx) return;
+  boneyChantTriggered = true;
+  spawnAudienceCue('Bo-ney!  Bo-ney!  Bo-ney!');
+  // Rhythmic crowd shouts: three pulses of "Bo-ney!" (low-high, low-high, low-high)
+  const t0 = audioCtx.currentTime;
+  for (let rep = 0; rep < 3; rep++) {
+    const base = rep * 0.55;
+    // "Bo" — low grunt
+    const oLo = audioCtx.createOscillator();
+    oLo.type = 'sawtooth';
+    oLo.frequency.setValueAtTime(140, t0 + base);
+    const bpLo = audioCtx.createBiquadFilter();
+    bpLo.type = 'bandpass'; bpLo.frequency.value = 500; bpLo.Q.value = 1.5;
+    const gLo = audioCtx.createGain();
+    gLo.gain.setValueAtTime(0, t0 + base);
+    gLo.gain.linearRampToValueAtTime(0.14, t0 + base + 0.02);
+    gLo.gain.exponentialRampToValueAtTime(0.0001, t0 + base + 0.18);
+    oLo.connect(bpLo); bpLo.connect(gLo); gLo.connect(audioCtx.destination);
+    oLo.start(t0 + base); oLo.stop(t0 + base + 0.20);
+    // "ney" — higher, slightly longer
+    const oHi = audioCtx.createOscillator();
+    oHi.type = 'sawtooth';
+    oHi.frequency.setValueAtTime(210, t0 + base + 0.20);
+    oHi.frequency.linearRampToValueAtTime(190, t0 + base + 0.42);
+    const bpHi = audioCtx.createBiquadFilter();
+    bpHi.type = 'bandpass'; bpHi.frequency.value = 700; bpHi.Q.value = 1.5;
+    const gHi = audioCtx.createGain();
+    gHi.gain.setValueAtTime(0, t0 + base + 0.20);
+    gHi.gain.linearRampToValueAtTime(0.16, t0 + base + 0.22);
+    gHi.gain.exponentialRampToValueAtTime(0.0001, t0 + base + 0.45);
+    oHi.connect(bpHi); bpHi.connect(gHi); gHi.connect(audioCtx.destination);
+    oHi.start(t0 + base + 0.20); oHi.stop(t0 + base + 0.48);
+    // Crowd noise layer per pulse
+    const nLen = audioCtx.sampleRate * 0.35 | 0;
+    const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
+    const nd = nBuf.getChannelData(0);
+    for (let j = 0; j < nd.length; j++) nd[j] = Math.random() * 2 - 1;
+    const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
+    const nBp = audioCtx.createBiquadFilter();
+    nBp.type = 'bandpass'; nBp.frequency.value = 600; nBp.Q.value = 0.4;
+    const nG = audioCtx.createGain();
+    nG.gain.setValueAtTime(0, t0 + base);
+    nG.gain.linearRampToValueAtTime(0.06, t0 + base + 0.03);
+    nG.gain.exponentialRampToValueAtTime(0.0001, t0 + base + 0.35);
+    nSrc.connect(nBp); nBp.connect(nG); nG.connect(audioCtx.destination);
+    nSrc.start(t0 + base); nSrc.stop(t0 + base + 0.38);
+  }
+  // Audience physical reaction: rhythmic jolts
+  for (const m of AUDIENCE) {
+    if (m.gone) continue;
+    if (Math.random() > 0.75) continue;
+    m.reaction = { type: 'jolt', delay: Math.random() * 0.2, elapsed: 0 };
+  }
 }
 
 function updateAudience(dt) {
@@ -1899,33 +1968,13 @@ function fireWhoosh() {
   src.start(t0); src.stop(t0 + dur + 0.01);
 }
 
-// Character change pop — comic cork-pop: fast pitch drop + resonant ping
+// Character change pop — bright kalimba chord in the music box register
 function firePop() {
   if (!audioCtx) return;
-  const t0 = audioCtx.currentTime;
-  // Pitched "pop" body — sine that drops fast
-  const osc = audioCtx.createOscillator();
-  osc.type = 'sine';
-  osc.frequency.setValueAtTime(900 + Math.random() * 200, t0);
-  osc.frequency.exponentialRampToValueAtTime(120, t0 + 0.12);
-  const g = audioCtx.createGain();
-  g.gain.setValueAtTime(0.20, t0);
-  g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.18);
-  osc.connect(g); g.connect(audioCtx.destination);
-  osc.start(t0); osc.stop(t0 + 0.20);
-  // Tiny noise transient at the attack for the "p" of the pop
-  const nLen = audioCtx.sampleRate * 0.03 | 0;
-  const nBuf = audioCtx.createBuffer(1, nLen, audioCtx.sampleRate);
-  const nd = nBuf.getChannelData(0);
-  for (let i = 0; i < nd.length; i++) nd[i] = Math.random() * 2 - 1;
-  const nSrc = audioCtx.createBufferSource(); nSrc.buffer = nBuf;
-  const hp = audioCtx.createBiquadFilter();
-  hp.type = 'highpass'; hp.frequency.value = 2000; hp.Q.value = 0.5;
-  const nG = audioCtx.createGain();
-  nG.gain.setValueAtTime(0.15, t0);
-  nG.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.025);
-  nSrc.connect(hp); hp.connect(nG); nG.connect(audioCtx.destination);
-  nSrc.start(t0); nSrc.stop(t0 + 0.035);
+  // Two high notes from the D Phrygian scale, quick staccato
+  const notes = [698.46, 880.00]; // F5 and A5
+  pluckNote(notes[0], 0.20, 0);
+  pluckNote(notes[1], 0.16, 0.04);
 }
 
 // Sharp collective intake of breath
