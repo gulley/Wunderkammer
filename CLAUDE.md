@@ -32,7 +32,7 @@ Everything lives in `index.html`. The code is organized into clearly-labeled sec
 5. **OPENING SEQUENCE** — state machine for the lid-opening animation (`closed → opening → open → playing`).
 6. **CRANK + BUTTONS** — constants for the three interactive controls (crank, pick, scene).
 7. **CHARACTER TRANSITION** — slide-out/slide-in animation when picking a new pair.
-8. **BACKDROP** — two backdrop images (castle, forest) drawn behind the stage with multiply blending. The scene button cycles between them.
+8. **BACKDROP** — five backdrop images (castle, forest, graveyard, throne_room, town_square) drawn behind the stage with multiply blending. The scene button cycles between them. Whoosh sound on transition.
 9. **PLAY SYSTEM** — the generative heart of the piece:
    - **CORPUS** — 200 Shakespeare lines tagged by emotional category (`greeting`, `boast`, `challenge`, `devotion`, `insult`, `despair`, `madness`, `prophecy`, `triumph`, `farewell`) and tone (`royal`, `comic`, `dark`, `gentle`, `wild`).
    - **STAGE_DIRS** — 8 opening directions + 24 mid-play directions, selected without repeats.
@@ -43,17 +43,30 @@ Everything lives in `index.html`. The code is organized into clearly-labeled sec
    - **Cue cards** — floating cream rectangles above the cabinet with Shakespeare text, drawn with fade-in/hold/drift-out lifecycle.
    - **Color suffusion** — speaking character's card tints toward a mood color; backdrop base fill shifts before multiply blending.
    - **Emotion glyphs** — small particles (♥, @#$%!, ★, ?, ·) that spawn from the speaking character's card and float upward.
-   - **Wind-down** — after Fin, puppets decelerate to a stop like a vinyl record ending.
-10. **STARS** — twinkling stars scattered in the dark canvas area surrounding the stage box.
-11. **GRAIN TEXTURE** — pre-baked stipple + fiber stroke texture for wood feel.
-12. **AUDIO** — kalimba-like plucked tones (D Phrygian) with mood-driven behavior:
+   - **Wind-down** — after Fin, puppets decelerate to a stop, then glide to center stage and take a bow.
+10. **AUDIENCE** — 25 silhouette spectators surrounding the stage (10 back row + 7 front row at bottom, 4 profiles per side). Key subsystems:
+    - **Shape variants** — 7 back-of-head shapes, 4 profile shapes, random tone variation (~35% lighter).
+    - **Fade-in** — audience invisible initially, fades in when crank first turns.
+    - **Reaction state machine** — per-member reactions driven by play beats: lean-fwd, lean-back, jolt, nod-off, ovation, stand-brief, restless, walkout. Smoothstep ramp-up/hold/ramp-down.
+    - **Audience cue cards** — floating italic text ("Gasps!", "Tender Sighs", etc.) below the audience, triggered by mood beats.
+    - **Mood-specific audio** — gasps (conflict/madness), sighs (devotion/despair/farewell), shouts (triumph/boast), murmurs, coughs. Prophecy = deliberate silence.
+    - **Applause** — realistic envelope: sparse tentative claps → dense peak → taper, with bandpass noise wash.
+    - **Character fan chants** — "Bone-eeey!" chant (3 pulsed reps) when Boney is cast; "Haaaag!" boo when Hag appears. Cue cards appear on both side flanks with fade-in/out pulsing.
+    - **Standing ovation** — triggers when puppets wind down after Fin: all members stand, applause + cheer + shouts, "Bravo!" float particles, 18 flower glyphs arc from audience onto stage.
+    - **Curtain bow** — puppets glide to center stage, face audience, dip forward in a bow, hold, then rise.
+    - **Z-order** — side profiles draw before backdrop (behind stage); bottom audience draws after crank (in front).
+11. **DUST MOTES** — slow-drifting particles in the dark surround.
+12. **GRAIN TEXTURE** — pre-baked stipple + fiber stroke texture for wood feel.
+13. **AUDIO** — kalimba-like plucked tones (D Phrygian) with mood-driven behavior:
     - **MOOD_MUSIC** — per-mood note selection (register, rate, volume, harmonic ratios).
     - **Structural stings** — ascending arpeggio for title, root+fifth for act titles, single high note for directions, descending arpeggio for Fin.
     - **Crank ticks** — filtered noise bursts simulating mechanical clicks.
-13. **DRAWING HELPERS** — polygon fill, perspective-correct line drawing, grain overlay.
-14. **SCENE DRAWING** — draw order matters: stars → backdrop → stage top → slot tracks → puppets (z-sorted) → lid → front face → buttons → crank → emotion particles → cue cards.
-15. **MAIN LOOP** — `draw(ts)` uses `requestAnimationFrame`. `running` is true only while the mouse is held on the crank.
-16. **INPUT** — canvas mouse events; hit-tested against three circles (crank, pick button, scene button). Hold Shift while cranking to reverse.
+    - **Transition sounds** — whoosh (backdrop change), kalimba pop chord (character change, two alternating variants).
+    - **Audience audio** — murmur, cough, gasp, sigh, shout, applause, cheer, character chants (see AUDIENCE above).
+14. **DRAWING HELPERS** — polygon fill, perspective-correct line drawing, grain overlay.
+15. **SCENE DRAWING** — draw order: dust motes → side audience → backdrop → stage top → slot tracks → puppets (z-sorted) → stage flowers → lid → front face → buttons → crank → bottom audience → audience cues → bravo floats → emotion particles → cue cards.
+16. **MAIN LOOP** — `draw(ts)` uses `requestAnimationFrame`. `running` is true only while the mouse is held on the crank. Canvas is 700×560 with a (30,20) translate offset centering the 640×520 scene.
+17. **INPUT** — canvas mouse events; hit-tested against three circles (crank, pick button, scene button). Hold Shift while cranking to reverse.
 
 ## Key design facts
 
@@ -91,4 +104,4 @@ Everything lives in `index.html`. The code is organized into clearly-labeled sec
 All PNGs in `assets/` are pencil-sketch stick figures on white/near-white backgrounds. The renderer uses `globalCompositeOperation = 'multiply'` to drop the white backgrounds into the cream card color.
 
 Characters: boney, bromley, george, hag, jester, king, piper, princess, sol, spike.
-Backdrops: castle, forest.
+Backdrops: castle, forest, graveyard, throne_room, town_square.
