@@ -267,6 +267,7 @@ function isEnabled(btn) {
   switch (openState) {
     case 'closed':  return btn === 'scene';
     case 'opening': return false;
+    case 'closing': return false;
     case 'open':    return btn === 'scene' || btn === 'pick';
     case 'playing': return true;
   }
@@ -987,6 +988,7 @@ function startPlay() {
   bowActive      = false;
   bowT           = 0;
   bowTargets     = [];
+  playInterrupts = 0;
   resetAudience();
 }
 
@@ -2277,6 +2279,787 @@ function playActEndBell() {
 }
 
 // =============================================================================
+// USELESS MACHINE — toggle switch + hand puppet
+// =============================================================================
+
+// Switch state
+let switchUp        = false;  // false = DOWN (idle/default), true = UP (user flipped it)
+let switchFlipCount = 0;      // total flips this session
+let playInterrupts  = 0;      // interrupts during current play
+
+// Switch position on front face (between pick and scene buttons)
+const SWITCH_X = 190;
+const SWITCH_Y = (ftl[1] + fbl[1]) / 2;  // vertically centered on front face
+
+// Load the glove images (same pattern as character cards)
+const gloveImg = { img: null, cardW: 60, cardH: CARD_H };
+const gloveRaw = new Image();
+gloveRaw.src = 'assets/white_glove.png';
+gloveRaw.onload = () => {
+  const aspect = gloveRaw.naturalWidth / gloveRaw.naturalHeight;
+  gloveImg.cardW = Math.round(CARD_H * aspect);
+  gloveImg.cardH = CARD_H;
+  gloveImg.img   = gloveRaw;
+};
+
+// Angry glove for frustrated behavior (15+ flips)
+const angryGloveImg = { img: null, cardW: 60, cardH: CARD_H };
+const angryGloveRaw = new Image();
+angryGloveRaw.src = 'assets/middle_glove.png';
+angryGloveRaw.onload = () => {
+  const aspect = angryGloveRaw.naturalWidth / angryGloveRaw.naturalHeight;
+  angryGloveImg.cardW = Math.round(CARD_H * aspect);
+  angryGloveImg.cardH = CARD_H;
+  angryGloveImg.img   = angryGloveRaw;
+};
+
+// Hand animation state machine
+let uselessPhase = 'idle';    // idle|pause|emerging|poised|reaching|flipping|retracting|descending
+                              // plus peek-pause, wag, special behaviors
+let uselessT     = 0;         // time accumulator for current phase
+let handRiseT    = 0;         // 0→1 how far the stick has risen
+let handReachA   = 0;         // 0→1 how far the arm has pivoted forward
+let handEmX      = 0;         // x-coordinate of emergence point on track
+let handEmY      = 0;         // y-coordinate of emergence point on track
+let handSide     = 0;         // -1 left, +1 right of switch (variety)
+let uselessBehavior = 'businesslike';
+let uselessOpenedLid = false;     // true if current UM cycle opened the lid
+let uselessLidCloseCount = 0;     // times UM has closed lid after (max 3)
+let rapidRoundsLeft = 0;          // auto-re-flip rounds remaining
+let frustratedCount = 0;          // completed middle-finger cycles
+let handSlideFromA = 0;           // track angle: far emergence point (slide behavior)
+let handSlideToA   = 0;           // track angle: near-switch target (slide behavior)
+
+// Phase durations (base values, modified by behavior)
+const US_PAUSE_BASE   = 0.4;
+const US_EMERGE_DUR   = 0.5;
+const US_POISED_DUR   = 0.5;  // pause at top before bending
+const US_REACH_DUR    = 0.4;
+const US_FLIP_DUR     = 0.1;
+const US_RETRACT_DUR  = 0.3;
+const US_DESCEND_DUR  = 0.4;
+
+// Stick and hand dimensions
+const HAND_STICK_H    = 80;   // how far the stick rises above stage surface
+const HAND_ARM_LEN    = 72;   // length from pivot to fingertip
+const HAND_PIVOT_Y    = ftl[1]; // stage front edge = pivot line
+
+// Play-freeze state
+let playFrozen     = false;
+let frozenWindDown = 1;
+
+function getUselessBehavior(count) {
+  if (count <= 2) return 'businesslike';
+  if (count <= 4) return 'reluctant';
+  if (count === 5) return 'slide';
+  if (count <= 6) return 'peek';
+  if (count <= 8) return 'wag';
+  if (count === 9) return 'slide';
+  if (count === 15) return 'frustrated';
+  const specials = ['stare', 'slap', 'tremble', 'slow-creep', 'fake-out'];
+  return specials[Math.floor(Math.random() * specials.length)];
+}
+
+function getPauseDuration(behavior) {
+  switch (behavior) {
+    case 'businesslike': return 0.35;
+    case 'reluctant':    return 0.9;
+    case 'peek':         return 0.5;
+    case 'wag':          return 0.5;
+    case 'stare':        return 0.4;
+    case 'slap':         return 0.2;
+    case 'tremble':      return 0.6;
+    case 'slow-creep':   return 1.4;
+    case 'fake-out':     return 0.4;
+    case 'slide':        return 0.4;
+    case 'frustrated':   return 0.6;
+    default:             return 0.4;
+  }
+}
+
+function getSpeedMult(behavior) {
+  switch (behavior) {
+    case 'businesslike': return 1.3;
+    case 'reluctant':    return 0.7;
+    case 'slap':         return 2.0;
+    case 'slow-creep':   return 0.3;
+    default:             return 1.0;
+  }
+}
+
+// Find the point on the current track closest to the switch's x-position
+// along the front edge of the stage
+function findEmergencePoint() {
+  if (!perf[0] || !perf[0].track) return [SWITCH_X, ftl[1]];
+  const track = perf[0].track;
+  let bestA = 0, bestDist = Infinity;
+  const targetX = SWITCH_X + (Math.random() < 0.5 ? -18 : 18);
+  for (let i = 0; i < 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    const pt = track.pt(a);
+    // Prefer points near the front edge (high y) and near the switch x
+    const dx = pt[0] - targetX;
+    const dy = pt[1] - ftl[1]; // distance from front edge
+    const dist = dx * dx + dy * dy * 0.3; // weight y less — prefer front
+    if (dist < bestDist) { bestDist = dist; bestA = a; }
+  }
+  const pt = track.pt(bestA);
+  handSide = pt[0] < SWITCH_X ? -1 : 1;
+  return pt;
+}
+
+// For slide behavior: emerge at a far point, slide along track to the switch
+function findSlideEmergencePoint() {
+  if (!perf[0] || !perf[0].track) return [SWITCH_X, ftl[1]];
+  const track = perf[0].track;
+
+  // Near point (same logic as findEmergencePoint)
+  let nearA = 0, nearDist = Infinity;
+  for (let i = 0; i < 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    const pt = track.pt(a);
+    const dx = pt[0] - SWITCH_X;
+    const dy = pt[1] - ftl[1];
+    const dist = dx * dx + dy * dy * 0.3;
+    if (dist < nearDist) { nearDist = dist; nearA = a; }
+  }
+
+  // Far point: maximize distance from switch, prefer front edge
+  let farA = 0, farScore = -Infinity;
+  for (let i = 0; i < 64; i++) {
+    const a = (i / 64) * Math.PI * 2;
+    const pt = track.pt(a);
+    const dx = Math.abs(pt[0] - SWITCH_X);
+    const dy = ftl[1] - pt[1]; // lower dy = closer to front
+    const score = dx - dy * 0.5;
+    if (score > farScore) { farScore = score; farA = a; }
+  }
+
+  handSlideFromA = farA;
+  handSlideToA   = nearA;
+
+  const farPt = track.pt(farA);
+  const nearPt = track.pt(nearA);
+  handSide = nearPt[0] < SWITCH_X ? -1 : 1;
+  return farPt;
+}
+
+// Trigger the useless machine
+function triggerUselessSwitch() {
+  if (uselessPhase !== 'idle') return;
+
+  switchUp = true;             // user flips it UP
+  switchFlipCount++;
+  uselessBehavior = getUselessBehavior(switchFlipCount);
+  uselessPhase = 'pause';
+  uselessT = 0;
+  handRiseT = 0;
+  handReachA = 0;
+
+  // Rapid exchange: certain flips beyond 5 trigger a volley of fast slaps
+  if ([7, 10, 13].includes(switchFlipCount)) {
+    rapidRoundsLeft = switchFlipCount <= 7 ? 1 : 2;
+  }
+
+  fireSwitchClick(true); // click-up sound
+
+  // If a play is running, freeze it
+  if (openState === 'playing' && running && !playEnded) {
+    playFrozen = true;
+    frozenWindDown = windDown;
+    playInterrupts++;
+    // Audience reactions to interruption
+    if (playInterrupts === 1) {
+      for (const m of AUDIENCE) {
+        if (m.gone || Math.random() > 0.4) continue;
+        m.reaction = { type: 'lean-fwd', delay: 0.1 + Math.random() * 0.3, elapsed: 0 };
+      }
+    } else if (playInterrupts === 2) {
+      spawnAudienceCue('Oh no...');
+      for (const m of AUDIENCE) {
+        if (m.gone || Math.random() > 0.6) continue;
+        m.reaction = { type: 'lean-fwd', delay: 0.1 + Math.random() * 0.3, elapsed: 0 };
+      }
+    } else if (playInterrupts === 3) {
+      spawnAudienceCue('Not again!');
+      if (audioCtx) fireAudienceShout();
+      for (const m of AUDIENCE) {
+        if (m.gone || Math.random() > 0.7) continue;
+        m.reaction = { type: 'jolt', delay: 0.1 + Math.random() * 0.2, elapsed: 0 };
+      }
+    } else if (playInterrupts >= 4) {
+      spawnSideCues('THE HAND!');
+      fireChantPulses([
+        { freq: 320, freqEnd: 340, formant: 900, vol: 0.14, dur: 0.25 },
+        { freq: 280, freqEnd: 260, formant: 700, vol: 0.16, dur: 0.35 },
+      ], 2);
+      for (const m of AUDIENCE) {
+        if (m.gone || Math.random() > 0.9) continue;
+        m.reaction = { type: 'jolt', delay: 0.1 + Math.random() * 0.2, elapsed: 0 };
+      }
+    }
+  }
+
+  // If lid is closed, open it first
+  if (openState === 'closed') {
+    uselessOpenedLid = true;
+    openState = 'opening';
+    openT = 0;
+    fireWhoosh();
+  }
+
+  // Ensure a track exists for the hand to emerge from (no visible characters)
+  if (perf.length === 0) {
+    const sharedTrack = makeWobblyTrack();
+    perf = [{ track: sharedTrack, angle: 0, img: null, cardW: 0, cardH: 0,
+              bob: ()=>0, waggle: ()=>0, cardTilt: ()=>0, name: '', tags: [] },
+            { track: sharedTrack, angle: Math.PI, img: null, cardW: 0, cardH: 0,
+              bob: ()=>0, waggle: ()=>0, cardTilt: ()=>0, name: '', tags: [] }];
+  }
+
+  // Find emergence point on the track
+  const em = findEmergencePoint();
+  handEmX = em[0];
+  handEmY = em[1];
+}
+
+// Update the useless machine state each frame
+function updateUselessMachine(dt) {
+  if (uselessPhase === 'idle') return;
+
+  const speed = getSpeedMult(uselessBehavior);
+  uselessT += dt;
+
+  switch (uselessPhase) {
+    case 'pause':
+      // Wait for lid to finish opening before the hand emerges
+      if (openState === 'opening') break;
+      if (uselessT >= getPauseDuration(uselessBehavior)) {
+        uselessPhase = 'emerging';
+        uselessT = 0;
+        // Re-find emergence point now that track is definitely ready
+        if (uselessBehavior === 'slide') {
+          const em = findSlideEmergencePoint();
+          handEmX = em[0]; handEmY = em[1];
+        } else {
+          const em = findEmergencePoint();
+          handEmX = em[0]; handEmY = em[1];
+        }
+      }
+      break;
+
+    case 'emerging': {
+      const dur = US_EMERGE_DUR / speed;
+      handRiseT = Math.min(1, uselessT / dur);
+      // Peek behavior: pause halfway
+      if (uselessBehavior === 'peek' && handRiseT >= 0.5 && uselessT < dur * 0.5 + 0.5) {
+        handRiseT = 0.5;
+        break;
+      }
+      if (uselessBehavior === 'peek' && handRiseT >= 0.5) {
+        handRiseT = 0.5 + (uselessT - dur * 0.5 - 0.5) / (dur * 0.5);
+        handRiseT = Math.min(1, handRiseT);
+      }
+      if (handRiseT >= 1) {
+        handRiseT = 1;
+        uselessPhase = uselessBehavior === 'slide' ? 'sliding' : 'poised';
+        uselessT = 0;
+      }
+      break;
+    }
+
+    case 'sliding': {
+      // Hand slides along the track groove from far point toward the switch
+      const dur = 1.5;
+      const t = Math.min(1, uselessT / dur);
+      const easedT = t * t * (3 - 2 * t); // smoothstep
+      // Interpolate track angle, shortest path around the loop
+      let da = handSlideToA - handSlideFromA;
+      if (da > Math.PI)  da -= 2 * Math.PI;
+      if (da < -Math.PI) da += 2 * Math.PI;
+      const currentA = handSlideFromA + da * easedT;
+      const pt = perf[0].track.pt(currentA);
+      handEmX = pt[0];
+      handEmY = pt[1];
+      handSide = pt[0] < SWITCH_X ? -1 : 1;
+      if (t >= 1) {
+        uselessPhase = 'poised';
+        uselessT = 0;
+      }
+      break;
+    }
+
+    case 'poised': {
+      // Hand sits at top of stick, brief pause before bending
+      const poisedDur = uselessBehavior === 'businesslike' ? 0.3 :
+                        uselessBehavior === 'slap' ? 0.15 :
+                        uselessBehavior === 'slow-creep' ? 1.0 :
+                        uselessBehavior === 'slide' ? 0.6 :
+                        uselessBehavior === 'frustrated' ? 2.5 : US_POISED_DUR;
+      if (uselessT >= poisedDur) {
+        if (audioCtx) fireCreak(); // creak as stick bends
+        if (uselessBehavior === 'fake-out') {
+          uselessPhase = 'fake-reach';
+        } else {
+          uselessPhase = 'reaching';
+        }
+        uselessT = 0;
+      }
+      break;
+    }
+
+    case 'fake-reach': {
+      // Reach partway, then pull back
+      const dur = US_REACH_DUR / speed;
+      handReachA = Math.min(0.6, uselessT / dur);
+      if (uselessT >= dur * 0.6) {
+        uselessPhase = 'fake-retract';
+        uselessT = 0;
+      }
+      break;
+    }
+
+    case 'fake-retract': {
+      const dur = 0.3;
+      handReachA = 0.6 * (1 - uselessT / dur);
+      if (uselessT >= dur) {
+        handReachA = 0;
+        uselessPhase = 'fake-pause';
+        uselessT = 0;
+      }
+      break;
+    }
+
+    case 'fake-pause':
+      if (uselessT >= 0.6) {
+        uselessPhase = 'reaching';
+        uselessT = 0;
+      }
+      break;
+
+    case 'reaching': {
+      const dur = US_REACH_DUR / speed;
+      // Ease-in: slow start, accelerate
+      const t = Math.min(1, uselessT / dur);
+      handReachA = t * t; // quadratic ease-in
+      if (t >= 1) {
+        handReachA = 1;
+        uselessPhase = 'flipping';
+        uselessT = 0;
+        switchUp = false;                    // hand pushes it back DOWN
+        fireSwitchClick(false); // click-down sound
+      }
+      break;
+    }
+
+    case 'flipping':
+      if (uselessT >= US_FLIP_DUR) {
+        // Stare behavior: hold after flipping
+        if (uselessBehavior === 'stare') {
+          uselessPhase = 'staring';
+          uselessT = 0;
+        } else {
+          uselessPhase = 'retracting';
+          uselessT = 0;
+        }
+      }
+      break;
+
+    case 'staring':
+      // Just hold there, menacingly
+      if (uselessT >= 2.0) {
+        uselessPhase = 'retracting';
+        uselessT = 0;
+      }
+      break;
+
+    case 'wagging': {
+      // Upright animation: wag, tremble, or frustrated sway
+      const wagDur = uselessBehavior === 'tremble' ? 1.0 :
+                     uselessBehavior === 'frustrated' ? 1.8 : 0.8;
+      if (uselessT >= wagDur) {
+        uselessPhase = 'descending';
+        uselessT = 0;
+      }
+      break;
+    }
+
+    case 'retracting': {
+      const dur = US_RETRACT_DUR / speed;
+      const t = Math.min(1, uselessT / dur);
+      handReachA = 1 - t * t; // ease-in retract
+      if (t >= 1) {
+        handReachA = 0;
+        // Linger upright for a beat before descending
+        uselessPhase = 'post-flip';
+        uselessT = 0;
+      }
+      break;
+    }
+
+    case 'post-flip': {
+      // Hand is upright at top of stick — linger a beat before descending
+      const linger = uselessBehavior === 'businesslike' ? 0.25 :
+                     uselessBehavior === 'slap' ? 0.1 :
+                     uselessBehavior === 'tremble' ? 0.15 :
+                     uselessBehavior === 'frustrated' ? 0.15 : 0.4;
+      if (uselessT >= linger) {
+        if (rapidRoundsLeft > 0) {
+          // Rapid exchange: switch pops back up, hand slaps it down again
+          uselessPhase = 'rapid-pause';
+          uselessT = 0;
+        } else if (uselessBehavior === 'wag') {
+          // Wag finger while upright — disapproving parent style
+          uselessPhase = 'wagging';
+          uselessT = 0;
+          if (audioCtx) {
+            pluckNote(587.33, 0.12, 0);     // D5 — tsk
+            pluckNote(659.25, 0.12, 0.18);  // E5 — tsk
+          }
+        } else if (uselessBehavior === 'tremble') {
+          // Shake with anger while upright
+          uselessPhase = 'wagging';
+          uselessT = 0;
+        } else if (uselessBehavior === 'frustrated') {
+          // Sway the middle finger while upright
+          uselessPhase = 'wagging';
+          uselessT = 0;
+        } else {
+          uselessPhase = 'descending';
+          uselessT = 0;
+        }
+      }
+      break;
+    }
+
+    case 'rapid-pause':
+      // Beat 1: hand upright, about to descend... then CLICK — switch pops back
+      if (uselessT >= 0.15 && !switchUp) {
+        rapidRoundsLeft--;
+        switchUp = true;
+        fireSwitchClick(true);
+      }
+      // Beat 2: hand reacts, then angrily swings back
+      if (uselessT >= 0.35) {
+        if (audioCtx) fireCreak();
+        uselessBehavior = 'slap'; // rapid rounds are fast angry slaps
+        uselessPhase = 'reaching';
+        uselessT = 0;
+        handReachA = 0;
+      }
+      break;
+
+    case 'descending': {
+      const dur = US_DESCEND_DUR / speed;
+      handRiseT = Math.max(0, 1 - uselessT / dur);
+      if (handRiseT <= 0) {
+        handRiseT = 0;
+
+        // Frustrated (middle finger) at #15 → reset the whole sequence
+        if (uselessBehavior === 'frustrated') {
+          switchFlipCount = 0;
+          uselessLidCloseCount = 0;
+        }
+
+        // Close lid if UM opened it (first 3 times only)
+        if (uselessOpenedLid && uselessLidCloseCount < 3) {
+          uselessOpenedLid = false;
+          uselessLidCloseCount++;
+          openState = 'closing';
+          fireWhoosh();
+          uselessPhase = 'lid-closing';
+          uselessT = 0;
+        } else {
+          uselessOpenedLid = false;
+          uselessPhase = 'idle';
+          uselessT = 0;
+          if (playFrozen) {
+            playFrozen = false;
+            windDown = frozenWindDown;
+          }
+        }
+      }
+      break;
+    }
+
+    case 'lid-closing':
+      // Wait for lid to finish closing, then clean up
+      if (openState === 'closed') {
+        uselessPhase = 'idle';
+        uselessT = 0;
+        perf = []; // remove invisible placeholder puppets
+        if (playFrozen) {
+          playFrozen = false;
+          windDown = frozenWindDown;
+        }
+      }
+      break;
+  }
+}
+
+// Draw the toggle switch on the front face
+function drawToggleSwitch() {
+  const sx = SWITCH_X, sy = SWITCH_Y;
+
+  // Round plate (same style as other button housings)
+  drawHousing(sx, sy);
+
+  // Toggle lever
+  ctx.strokeStyle = '#2a1e08';
+  ctx.lineWidth = 4.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(sx, sy);
+  if (switchUp) {
+    ctx.lineTo(sx, sy - 14); // points up (toward stage)
+  } else {
+    ctx.lineTo(sx, sy + 14); // points down
+  }
+  ctx.stroke();
+
+  // Lever knob
+  ctx.fillStyle = '#3a3020';
+  ctx.strokeStyle = '#1a1206';
+  ctx.lineWidth = 1;
+  ctx.beginPath();
+  if (switchUp) {
+    ctx.arc(sx, sy - 14, 4.5, 0, Math.PI * 2);
+  } else {
+    ctx.arc(sx, sy + 14, 4.5, 0, Math.PI * 2);
+  }
+  ctx.fill(); ctx.stroke();
+  ctx.lineCap = 'butt';
+}
+
+// Draw the glove image at a given position/rotation (like a character card)
+function drawGloveCard(x, y, rotation) {
+  // Pick which glove to show
+  const gImg = uselessBehavior === 'frustrated' ? angryGloveImg : gloveImg;
+  if (!gImg.img) return;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+
+  // Tremble behavior: angry shake while upright (wagging phase)
+  if (uselessBehavior === 'tremble' && uselessPhase === 'wagging') {
+    const shake = (Math.random() - 0.5) * 5;
+    ctx.translate(shake, shake * 0.5);
+  }
+
+  // Wag behavior: oscillate during wagging phase
+  if (uselessBehavior === 'wag' && uselessPhase === 'wagging') {
+    const wagAngle = Math.sin(uselessT * 16) * 0.25;
+    ctx.rotate(wagAngle);
+  }
+
+  // Frustrated behavior: slow deliberate sway while upright (wagging phase)
+  if (uselessBehavior === 'frustrated' && uselessPhase === 'wagging') {
+    const waveAngle = Math.sin(uselessT * 3.5) * 0.35;
+    ctx.rotate(waveAngle);
+  }
+
+  // Frustrated behavior: wave back and forth while poised (pre-flip taunt)
+  if (uselessBehavior === 'frustrated' && uselessPhase === 'poised') {
+    const waveAngle = Math.sin(uselessT * 4.5) * 0.3;
+    ctx.rotate(waveAngle);
+  }
+
+  const w = gImg.cardW;
+  const h = gImg.cardH;
+
+  // Cream card background (same as character cards)
+  ctx.fillStyle = '#f0ead0';
+  ctx.fillRect(-w / 2, -h, w, h);
+
+  // Draw glove with multiply blending (drops white background)
+  ctx.globalCompositeOperation = 'multiply';
+  ctx.drawImage(gImg.img, -w / 2, -h, w, h);
+  ctx.globalCompositeOperation = 'source-over';
+
+  ctx.restore();
+}
+
+// Draw the hand puppet at its current animation state
+function drawHandPuppetOnStage() {
+  // Only draw during phases where the hand is above the stage
+  if (uselessPhase === 'idle' || uselessPhase === 'pause') return;
+  if (handRiseT <= 0 && handReachA <= 0) return;
+
+  const riseEased = handRiseT * handRiseT * (3 - 2 * handRiseT); // smoothstep
+
+  // Stick base is at the emergence point on the track
+  const stickBaseY = handEmY;
+  const stickTopY  = stickBaseY - HAND_STICK_H * riseEased;
+
+  ctx.save();
+
+  // Draw stick
+  ctx.strokeStyle = '#150f04';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(handEmX, stickBaseY);
+  ctx.lineTo(handEmX, stickTopY);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+
+  // Draw glove card at top of stick (during emerge/poised/descend when not reaching)
+  if (handRiseT > 0 && handReachA <= 0) {
+    drawGloveCard(handEmX, stickTopY, 0);
+  }
+
+  ctx.restore();
+}
+
+// Draw the hand reaching from the stick top toward the switch
+function drawHandPuppetOverFace() {
+  if (handReachA <= 0) return;
+  if (uselessPhase === 'idle' || uselessPhase === 'pause' ||
+      uselessPhase === 'emerging' || uselessPhase === 'poised' ||
+      uselessPhase === 'descending') return;
+
+  const riseEased = handRiseT * handRiseT * (3 - 2 * handRiseT);
+  const stickTopX = handEmX;
+  const stickTopY = handEmY - HAND_STICK_H * riseEased;
+
+  // Arm extends from stick top toward the switch
+  const targetX = SWITCH_X;
+  const targetY = SWITCH_Y - 24; // fingertip meets the switch lever top
+  const dx = targetX - stickTopX;
+  const dy = targetY - stickTopY;
+  const dist = Math.sqrt(dx * dx + dy * dy);
+  const angle = Math.atan2(dy, dx);
+
+  // Current arm extension
+  const armLen = dist * handReachA;
+  const armEndX = stickTopX + Math.cos(angle) * armLen;
+  const armEndY = stickTopY + Math.sin(angle) * armLen;
+
+  ctx.save();
+
+  // Draw arm from stick top toward switch
+  ctx.strokeStyle = '#150f04';
+  ctx.lineWidth = 2.5;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(stickTopX, stickTopY);
+  ctx.lineTo(armEndX, armEndY);
+  ctx.stroke();
+  ctx.lineCap = 'butt';
+
+  // Draw glove card at end of arm, rotated so finger points toward switch
+  const handRotation = angle + Math.PI / 2;
+  drawGloveCard(armEndX, armEndY, handRotation);
+
+  ctx.restore();
+}
+
+// Switch click sound — sharp metallic snap
+function fireSwitchClick(isUp) {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+
+  // Layer 1: sharp noise impact (the snap — very short, hard attack)
+  const dur = 0.008;
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    // Steep exponential decay for a sharp crack
+    data[i] = (Math.random() * 2 - 1) * Math.exp(-i / data.length * 4);
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+
+  // Highpass removes muddiness, keeps the sharp edge
+  const hp = audioCtx.createBiquadFilter();
+  hp.type = 'highpass';
+  hp.frequency.value = isUp ? 1800 : 1200;
+  hp.Q.value = 1;
+
+  const nGain = audioCtx.createGain();
+  nGain.gain.setValueAtTime(0.45, t0);
+  nGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.025);
+
+  src.connect(hp).connect(nGain).connect(audioCtx.destination);
+  src.start(t0); src.stop(t0 + 0.03);
+
+  // Layer 2: brief metallic rattle (very short noise burst, different filter)
+  const ratDur = 0.015;
+  const ratBuf = audioCtx.createBuffer(1, audioCtx.sampleRate * ratDur, audioCtx.sampleRate);
+  const ratData = ratBuf.getChannelData(0);
+  for (let i = 0; i < ratData.length; i++) {
+    ratData[i] = (Math.random() * 2 - 1) * Math.exp(-i / ratData.length * 3);
+  }
+  const ratSrc = audioCtx.createBufferSource();
+  ratSrc.buffer = ratBuf;
+
+  const ratBp = audioCtx.createBiquadFilter();
+  ratBp.type = 'bandpass';
+  ratBp.frequency.value = isUp ? 5500 : 4000;
+  ratBp.Q.value = 3;
+
+  const ratGain = audioCtx.createGain();
+  ratGain.gain.setValueAtTime(0.15, t0 + 0.003); // slight delay — the rattle follows the snap
+  ratGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.035);
+
+  ratSrc.connect(ratBp).connect(ratGain).connect(audioCtx.destination);
+  ratSrc.start(t0 + 0.003); ratSrc.stop(t0 + 0.04);
+
+  // Layer 3: low thunk (body of the switch hitting its stop)
+  const thunk = audioCtx.createOscillator();
+  thunk.type = 'sine';
+  thunk.frequency.setValueAtTime(isUp ? 160 : 120, t0);
+  thunk.frequency.exponentialRampToValueAtTime(60, t0 + 0.03);
+
+  const tGain = audioCtx.createGain();
+  tGain.gain.setValueAtTime(0.28, t0);
+  tGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.05);
+
+  thunk.connect(tGain).connect(audioCtx.destination);
+  thunk.start(t0); thunk.stop(t0 + 0.06);
+
+  // Layer 4: high metallic ting (very brief, adds brightness)
+  const ting = audioCtx.createOscillator();
+  ting.type = 'sine';
+  ting.frequency.value = isUp ? 6800 : 5400;
+
+  const tingGain = audioCtx.createGain();
+  tingGain.gain.setValueAtTime(0.08, t0);
+  tingGain.gain.exponentialRampToValueAtTime(0.001, t0 + 0.04);
+
+  ting.connect(tingGain).connect(audioCtx.destination);
+  ting.start(t0); ting.stop(t0 + 0.05);
+}
+
+// Mechanical creak sound
+function fireCreak() {
+  if (!audioCtx) return;
+  const t0 = audioCtx.currentTime;
+  const dur = 0.25;
+  const buf = audioCtx.createBuffer(1, audioCtx.sampleRate * dur, audioCtx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < data.length; i++) {
+    data[i] = (Math.random() * 2 - 1);
+  }
+  const src = audioCtx.createBufferSource();
+  src.buffer = buf;
+
+  const bp = audioCtx.createBiquadFilter();
+  bp.type = 'bandpass';
+  bp.frequency.setValueAtTime(250, t0);
+  bp.frequency.linearRampToValueAtTime(800, t0 + dur);
+  bp.Q.value = 8;
+
+  const gain = audioCtx.createGain();
+  gain.gain.setValueAtTime(0.38, t0);
+  gain.gain.linearRampToValueAtTime(0.18, t0 + dur * 0.4);
+  gain.gain.exponentialRampToValueAtTime(0.001, t0 + dur);
+
+  src.connect(bp).connect(gain).connect(audioCtx.destination);
+  src.start(t0); src.stop(t0 + dur + 0.01);
+}
+
+// =============================================================================
 // DRAWING HELPERS
 // =============================================================================
 
@@ -2493,6 +3276,7 @@ function drawCrankArm() {
 }
 
 function drawPuppet(p, yOffset, alpha, cardTint) {
+  if (!p.img) return; // skip invisible placeholder puppets
   const PUPPET_SCALE = 1.125;
   const stickH = 52 * PUPPET_SCALE;     // ~58.5 px
   const puppetIdx = perf.indexOf(p);
@@ -2718,6 +3502,11 @@ function draw(ts) {
     openT += dt / OPEN_DUR;
     if (openT >= 1) { openT = 1; openState = 'open'; }
   }
+  // Advance closing animation (useless machine closing the lid)
+  if (openState === 'closing') {
+    openT -= dt / OPEN_DUR;
+    if (openT <= 0) { openT = 0; openState = 'closed'; }
+  }
 
   // Advance crank (puppets wind down after play ends)
   if (running) {
@@ -2736,9 +3525,10 @@ function draw(ts) {
       else                             hushMult = 0;                            // paused
     }
     const dir = shiftHeld ? -1 : 1;
-    for (const p of perf) p.angle += SPEED * dt * dir * windDown * hushMult;
+    const freezeMult = playFrozen ? 0 : 1;
+    for (const p of perf) p.angle += SPEED * dt * dir * windDown * hushMult * freezeMult;
     crankA += SPEED * dt * 2.0 * dir;
-    if (!shiftHeld && windDown > 0.05) {
+    if (!shiftHeld && windDown > 0.05 && !playFrozen) {
       if (musicHush > 0) {
         musicHush -= dt;
       } else {
@@ -2791,7 +3581,7 @@ function draw(ts) {
   }
 
   // Advance play
-  if (running && playScript.length > 0 && openState === 'playing') {
+  if (running && !playFrozen && playScript.length > 0 && openState === 'playing') {
     const dir = shiftHeld ? -1 : 1;
     playCrankAccum += SPEED * dt * dir;
     const thresh = BEAT_BASE * beatPace(playBeatIdx);
@@ -2843,6 +3633,9 @@ function draw(ts) {
 
   updateAudience(dt);
 
+  // Advance useless machine
+  updateUselessMachine(dt);
+
   // Advance bow animation
   if (bowActive) {
     bowT += dt;
@@ -2886,12 +3679,22 @@ function draw(ts) {
   // Flowers landing on stage (drawn above stage surface, below lid/front face)
   drawStageFlowers();
 
+  // Useless machine hand (part 1: stick rising through stage, clipped to stage top)
+  drawHandPuppetOnStage();
+
   // Lid rotates open like a laptop, revealing backdrop on inside face
   if (openState === 'closed') drawLid(0);
   else if (openState === 'opening') drawLid(openT);
+  else if (openState === 'closing') drawLid(openT);
 
   // Front face covers characters that descend into it during transitions
   drawFrontFace();
+
+  // Toggle switch plate (drawn before the hand so the arm appears ON TOP of the plate)
+  drawToggleSwitch();
+
+  // Useless machine hand (part 2: reaching over the front face toward switch)
+  drawHandPuppetOverFace();
 
   // Buttons (dimmed until unlocked)
   withAlpha(isEnabled('scene') ? 1 : DIM, drawSceneButton);
@@ -2929,6 +3732,11 @@ function inCircle(x, y, cx, cy) {
   return dx*dx + dy*dy <= HIT_R * HIT_R;
 }
 
+function inSwitchArea(x, y) {
+  const dx = x - SWITCH_X, dy = y - SWITCH_Y;
+  return dx*dx + dy*dy <= 20 * 20;
+}
+
 function handleInputDown(e) {
   if (!audioCtx) {
     audioCtx = new AudioContext();
@@ -2937,6 +3745,12 @@ function handleInputDown(e) {
   }
 
   const [x, y] = getCanvasPos(e);
+
+  // Useless machine switch — always available, checked first
+  if (inSwitchArea(x, y) && !switchUp && uselessPhase === 'idle') {
+    triggerUselessSwitch();
+    return;
+  }
 
   if (isEnabled('crank') && inCircle(x, y, AXLE[0], AXLE[1])) {
     running = true; lastT = null;
@@ -2974,7 +3788,8 @@ canvas.addEventListener('mousemove', e => {
   canvas.style.cursor = (
     (isEnabled('crank') && inCircle(x,y,AXLE[0],AXLE[1])) ||
     (isEnabled('pick')  && inCircle(x,y,PICK_BTN[0],PICK_BTN[1])) ||
-    (isEnabled('scene') && inCircle(x,y,SCENE_BTN[0],SCENE_BTN[1]))
+    (isEnabled('scene') && inCircle(x,y,SCENE_BTN[0],SCENE_BTN[1])) ||
+    (!switchUp && uselessPhase === 'idle' && inSwitchArea(x,y))
   ) ? 'pointer' : 'default';
 });
 
@@ -2985,7 +3800,15 @@ canvas.addEventListener('touchstart', e => {
 canvas.addEventListener('touchend',    e => { e.preventDefault(); handleInputUp(); }, { passive: false });
 canvas.addEventListener('touchcancel', handleInputUp);
 
-document.addEventListener('keydown', e => { if (e.key === 'Shift') shiftHeld = true; });
+document.addEventListener('keydown', e => {
+  if (e.key === 'Shift') shiftHeld = true;
+  if (e.key === ' ' && !switchUp && uselessPhase === 'idle') {
+    e.preventDefault();
+    if (!audioCtx) audioCtx = new AudioContext();
+    else if (audioCtx.state === 'suspended') audioCtx.resume();
+    triggerUselessSwitch();
+  }
+});
 document.addEventListener('keyup',   e => { if (e.key === 'Shift') shiftHeld = false; });
 
 requestAnimationFrame(draw);
