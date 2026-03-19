@@ -3795,9 +3795,32 @@ canvas.addEventListener('mousemove', e => {
 
 canvas.addEventListener('touchstart', e => {
   e.preventDefault();
+  // Check new touches for UM switch (supports multi-touch: crank + switch)
+  for (const touch of e.changedTouches) {
+    const r = canvas.getBoundingClientRect();
+    const x = (touch.clientX - r.left) * canvas.width / r.width - 30;
+    const y = (touch.clientY - r.top) * canvas.height / r.height - 20;
+    if (inSwitchArea(x, y) && !switchUp && uselessPhase === 'idle') {
+      if (!audioCtx) audioCtx = new AudioContext();
+      else if (audioCtx.state === 'suspended') audioCtx.resume();
+      triggerUselessSwitch();
+      return;
+    }
+  }
   handleInputDown(e);
 }, { passive: false });
-canvas.addEventListener('touchend',    e => { e.preventDefault(); handleInputUp(); }, { passive: false });
+canvas.addEventListener('touchend', e => {
+  e.preventDefault();
+  // Only stop cranking if no remaining touches are on the crank
+  let crankHeld = false;
+  for (const touch of e.touches) {
+    const r = canvas.getBoundingClientRect();
+    const x = (touch.clientX - r.left) * canvas.width / r.width - 30;
+    const y = (touch.clientY - r.top) * canvas.height / r.height - 20;
+    if (inCircle(x, y, AXLE[0], AXLE[1])) { crankHeld = true; break; }
+  }
+  if (!crankHeld) handleInputUp();
+}, { passive: false });
 canvas.addEventListener('touchcancel', handleInputUp);
 
 document.addEventListener('keydown', e => {
